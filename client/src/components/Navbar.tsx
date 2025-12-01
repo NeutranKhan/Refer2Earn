@@ -16,17 +16,19 @@ export function Navbar({ isLoggedIn = false, isAdmin = false, onLogin, onLogout 
   const [isOpen, setIsOpen] = useState(false);
   const [location] = useLocation();
 
-  const navLinks = [
-    { href: "/", label: "Home" },
-    { href: "/how-it-works", label: "How It Works" },
-    { href: "/pricing", label: "Pricing" },
-  ];
+  const navLinks = isLoggedIn
+    ? [
+        { href: "/", label: "Home" },
+        { href: "/dashboard", label: "Dashboard" },
+        ...(isAdmin ? [{ href: "/admin", label: "Admin" }] : []),
+      ]
+    : [
+        { href: "/", label: "Home" },
+        { href: "/how-it-works", label: "How It Works" },
+        { href: "/pricing", label: "Pricing" },
+      ];
 
-  const authLinks = isLoggedIn
-    ? [{ href: "/dashboard", label: "Dashboard" }, ...(isAdmin ? [{ href: "/admin", label: "Admin" }] : [])]
-    : [];
-
-  const allLinks = [...navLinks, ...authLinks];
+  const allLinks = navLinks;
 
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 glass-strong">
