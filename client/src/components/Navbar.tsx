@@ -24,8 +24,7 @@ export function Navbar({ isLoggedIn = false, isAdmin = false, onLogin, onLogout 
       ]
     : [
         { href: "/", label: "Home" },
-        { href: "/how-it-works", label: "How It Works" },
-        { href: "/pricing", label: "Pricing" },
+        { href: "/about", label: "About Us" },
       ];
 
   const allLinks = navLinks;

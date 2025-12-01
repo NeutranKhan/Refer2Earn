@@ -1,0 +1,179 @@
+import { Navbar } from "@/components/Navbar";
+import { Footer } from "@/components/Footer";
+import { motion } from "framer-motion";
+import { Users, Target, Zap, Heart } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
+
+export function About() {
+  const { isAuthenticated } = useAuth();
+
+  const handleLogin = () => {
+    window.location.href = "/api/login";
+  };
+
+  const handleLogout = () => {
+    window.location.href = "/api/logout";
+  };
+
+  return (
+    <div className="min-h-screen bg-background">
+      <Navbar
+        isLoggedIn={isAuthenticated}
+        isAdmin={false}
+        onLogin={handleLogin}
+        onLogout={handleLogout}
+      />
+
+      <main className="pt-20 md:pt-24 pb-12">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mb-12"
+          >
+            <h1 className="text-4xl md:text-5xl font-display font-bold text-foreground mb-4">
+              About <span className="gradient-neon-text">Refer2Earn</span>
+            </h1>
+            <p className="text-lg text-muted-foreground">
+              Empowering Liberians to build wealth through meaningful referrals
+            </p>
+          </motion.div>
+
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.1 }}
+            className="glass rounded-2xl p-8 md:p-12 neon-border mb-12"
+          >
+            <h2 className="text-2xl font-display font-bold text-foreground mb-4">
+              Our Mission
+            </h2>
+            <p className="text-muted-foreground leading-relaxed mb-6">
+              Refer2Earn is Liberia's premier referral-based earning platform designed to create economic opportunities for everyone. We believe that your network is your net worth, and we've built a transparent, secure system that rewards you for connecting friends and family to quality services.
+            </p>
+            <p className="text-muted-foreground leading-relaxed">
+              Our mission is simple: make it easy for Liberians to earn sustainable income through referrals, while building a vibrant community of empowered entrepreneurs.
+            </p>
+          </motion.div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-12">
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.2 }}
+              className="glass rounded-2xl p-8 neon-border hover-elevate"
+            >
+              <div className="p-3 rounded-xl gradient-neon w-fit mb-4">
+                <Target className="w-6 h-6 text-white" />
+              </div>
+              <h3 className="text-xl font-display font-bold text-foreground mb-3">
+                Transparent & Fair
+              </h3>
+              <p className="text-muted-foreground">
+                Clear earning structure with no hidden fees. Every credit is earned through active referrals with real engagement from your network.
+              </p>
+            </motion.div>
+
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.3 }}
+              className="glass rounded-2xl p-8 neon-border hover-elevate"
+            >
+              <div className="p-3 rounded-xl gradient-neon w-fit mb-4">
+                <Zap className="w-6 h-6 text-white" />
+              </div>
+              <h3 className="text-xl font-display font-bold text-foreground mb-3">
+                Fast Payments
+              </h3>
+              <p className="text-muted-foreground">
+                Quick and reliable payout system via Mobile Money. Get paid directly to your Lonestar Cell MTN or Orange Money account.
+              </p>
+            </motion.div>
+
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.4 }}
+              className="glass rounded-2xl p-8 neon-border hover-elevate"
+            >
+              <div className="p-3 rounded-xl gradient-neon w-fit mb-4">
+                <Users className="w-6 h-6 text-white" />
+              </div>
+              <h3 className="text-xl font-display font-bold text-foreground mb-3">
+                Community Driven
+              </h3>
+              <p className="text-muted-foreground">
+                Join thousands of Liberians earning with Refer2Earn. Grow your network and watch your earnings compound.
+              </p>
+            </motion.div>
+
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.5 }}
+              className="glass rounded-2xl p-8 neon-border hover-elevate"
+            >
+              <div className="p-3 rounded-xl gradient-neon w-fit mb-4">
+                <Heart className="w-6 h-6 text-white" />
+              </div>
+              <h3 className="text-xl font-display font-bold text-foreground mb-3">
+                Customer Focused
+              </h3>
+              <p className="text-muted-foreground">
+                Your success is our success. We provide 24/7 support to help you maximize your earning potential.
+              </p>
+            </motion.div>
+          </div>
+
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.6 }}
+            className="glass rounded-2xl p-8 md:p-12 neon-border"
+          >
+            <h2 className="text-2xl font-display font-bold text-foreground mb-4">
+              How We Work
+            </h2>
+            <div className="space-y-6">
+              <div>
+                <h3 className="text-lg font-semibold text-foreground mb-2">
+                  1. Get Your Referral Code
+                </h3>
+                <p className="text-muted-foreground">
+                  Sign up and receive your unique referral code instantly. Share it with friends and family through any channel.
+                </p>
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold text-foreground mb-2">
+                  2. They Subscribe
+                </h3>
+                <p className="text-muted-foreground">
+                  When someone uses your referral code to subscribe with a 1,500 LRD monthly payment, they become an active referral.
+                </p>
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold text-foreground mb-2">
+                  3. Earn Credits
+                </h3>
+                <p className="text-muted-foreground">
+                  You earn 500 LRD in credits for each active referral. With 3+ active referrals, your subscription becomes completely free.
+                </p>
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold text-foreground mb-2">
+                  4. Get Paid
+                </h3>
+                <p className="text-muted-foreground">
+                  With 4+ active referrals, you can request cash payouts directly to your Mobile Money account. We handle all the processing.
+                </p>
+              </div>
+            </div>
+          </motion.div>
+        </div>
+      </main>
+
+      <Footer />
+    </div>
+  );
+}
