@@ -21,6 +21,7 @@ export function Landing() {
     <div className="min-h-screen bg-background">
       <Navbar 
         isLoggedIn={isAuthenticated} 
+        isAdmin={isAuthenticated ? false : false}
         onLogin={handleLogin} 
         onLogout={handleLogout} 
       />

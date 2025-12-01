@@ -7,11 +7,12 @@ import { cn } from "@/lib/utils";
 
 interface NavbarProps {
   isLoggedIn?: boolean;
+  isAdmin?: boolean;
   onLogin?: () => void;
   onLogout?: () => void;
 }
 
-export function Navbar({ isLoggedIn = false, onLogin, onLogout }: NavbarProps) {
+export function Navbar({ isLoggedIn = false, isAdmin = false, onLogin, onLogout }: NavbarProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [location] = useLocation();
 
@@ -22,10 +23,7 @@ export function Navbar({ isLoggedIn = false, onLogin, onLogout }: NavbarProps) {
   ];
 
   const authLinks = isLoggedIn
-    ? [
-        { href: "/dashboard", label: "Dashboard" },
-        { href: "/admin", label: "Admin" },
-      ]
+    ? [{ href: "/dashboard", label: "Dashboard" }, ...(isAdmin ? [{ href: "/admin", label: "Admin" }] : [])]
     : [];
 
   const allLinks = [...navLinks, ...authLinks];
