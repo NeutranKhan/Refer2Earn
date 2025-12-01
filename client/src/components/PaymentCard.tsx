@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useMutation } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -6,6 +7,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { motion } from "framer-motion";
 import { Phone, CreditCard, Shield, Check } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 
 interface PaymentCardProps {
   amount?: number;
@@ -19,8 +21,34 @@ export function PaymentCard({
   const [provider, setProvider] = useState("mtn");
   const [phoneNumber, setPhoneNumber] = useState("");
   const [referralCode, setReferralCode] = useState("");
-  const [isProcessing, setIsProcessing] = useState(false);
   const { toast } = useToast();
+
+  const payMutation = useMutation({
+    mutationFn: async () => {
+      return apiRequest("POST", "/api/subscription/pay", {
+        paymentProvider: provider,
+        paymentPhone: phoneNumber,
+        referralCode: referralCode || undefined,
+      });
+    },
+    onSuccess: () => {
+      toast({
+        title: "Payment Initiated!",
+        description: "Please check your phone and confirm the payment.",
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/referrals/stats"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/subscription"] });
+      onPaymentComplete?.();
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Payment Failed",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
 
   const handlePayment = async () => {
     if (!phoneNumber) {
@@ -32,17 +60,7 @@ export function PaymentCard({
       return;
     }
 
-    setIsProcessing(true);
-    
-    await new Promise((resolve) => setTimeout(resolve, 2000));
-    
-    toast({
-      title: "Payment Initiated!",
-      description: "Please check your phone and confirm the payment.",
-    });
-    
-    setIsProcessing(false);
-    onPaymentComplete?.();
+    payMutation.mutate();
   };
 
   const providers = [
@@ -159,10 +177,10 @@ export function PaymentCard({
         <Button
           className="w-full neon-glow text-base py-6"
           onClick={handlePayment}
-          disabled={isProcessing}
+          disabled={payMutation.isPending}
           data-testid="button-pay"
         >
-          {isProcessing ? (
+          {payMutation.isPending ? (
             <motion.div
               animate={{ rotate: 360 }}
               transition={{ duration: 1, repeat: Infinity, ease: "linear" }}

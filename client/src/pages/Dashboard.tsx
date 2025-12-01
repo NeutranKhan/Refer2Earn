@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { Navbar } from "@/components/Navbar";
 import { StatCard } from "@/components/StatCard";
 import { ProgressTracker } from "@/components/ProgressTracker";
@@ -7,7 +8,7 @@ import { ReferralList } from "@/components/ReferralList";
 import { PaymentCard } from "@/components/PaymentCard";
 import { Footer } from "@/components/Footer";
 import { motion } from "framer-motion";
-import { Users, Wallet, TrendingUp, CheckCircle, CreditCard } from "lucide-react";
+import { Users, Wallet, TrendingUp, CheckCircle, CreditCard, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -15,73 +16,103 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { useAuth } from "@/hooks/useAuth";
+import { useToast } from "@/hooks/use-toast";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+import type { Referral, User } from "@shared/schema";
 
-interface DashboardProps {
-  onLogout?: () => void;
+interface ReferralStats {
+  totalReferrals: number;
+  activeReferrals: number;
+  pendingReferrals: number;
+  monthlyCredits: number;
+  subscriptionFree: boolean;
+  monthlyPayout: number;
 }
 
-export function Dashboard({ onLogout }: DashboardProps) {
-  const [showPayment, setShowPayment] = useState(false);
+interface ReferralWithUser extends Referral {
+  referredUser: User | null;
+}
 
-  const mockUser = {
-    name: "Kwame Johnson",
-    referralCode: "REF2E-KW8X4",
-    subscriptionStatus: "free" as const,
+export function Dashboard() {
+  const [showPayment, setShowPayment] = useState(false);
+  const { user, isLoading: userLoading } = useAuth();
+  const { toast } = useToast();
+
+  const { data: stats, isLoading: statsLoading } = useQuery<ReferralStats>({
+    queryKey: ["/api/referrals/stats"],
+  });
+
+  const { data: referralsData, isLoading: referralsLoading } = useQuery<ReferralWithUser[]>({
+    queryKey: ["/api/referrals"],
+  });
+  const referrals = referralsData || [];
+
+  const payMutation = useMutation({
+    mutationFn: async (data: { paymentProvider: string; paymentPhone: string }) => {
+      return apiRequest("POST", "/api/subscription/pay", data);
+    },
+    onSuccess: () => {
+      toast({
+        title: "Payment Successful!",
+        description: "Your subscription is now active.",
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/referrals/stats"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/subscription"] });
+      setShowPayment(false);
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Payment Failed",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleLogout = () => {
+    window.location.href = "/api/logout";
   };
 
-  const mockReferrals = [
-    {
-      id: "1",
-      name: "Fatou Williams",
-      phone: "+231 88 234 5678",
-      status: "active" as const,
-      joinedDate: "Nov 15, 2024",
-      earnings: 500,
-    },
-    {
-      id: "2",
-      name: "Prince Cooper",
-      phone: "+231 77 345 6789",
-      status: "active" as const,
-      joinedDate: "Nov 20, 2024",
-      earnings: 500,
-    },
-    {
-      id: "3",
-      name: "Mary Weah",
-      phone: "+231 88 456 7890",
-      status: "active" as const,
-      joinedDate: "Nov 22, 2024",
-      earnings: 500,
-    },
-    {
-      id: "4",
-      name: "John Doe",
-      phone: "+231 77 567 8901",
-      status: "pending" as const,
-      joinedDate: "Nov 28, 2024",
-      earnings: 0,
-    },
-    {
-      id: "5",
-      name: "Sarah Cole",
-      phone: "+231 88 678 9012",
-      status: "active" as const,
-      joinedDate: "Nov 25, 2024",
-      earnings: 500,
-    },
-  ];
+  const handlePayment = (provider: string, phone: string) => {
+    payMutation.mutate({ paymentProvider: provider, paymentPhone: phone });
+  };
 
-  const activeReferrals = mockReferrals.filter((r) => r.status === "active").length;
-  const pendingReferrals = mockReferrals.filter((r) => r.status === "pending").length;
-  const monthlyCredits = activeReferrals * 500;
-  const subscriptionFree = activeReferrals >= 3;
-  const monthlyPayout = subscriptionFree ? Math.max(0, monthlyCredits - 1500) : 0;
-  const totalEarnings = monthlyPayout * 3;
+  if (userLoading || statsLoading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  const activeReferrals = stats?.activeReferrals || 0;
+  const pendingReferrals = stats?.pendingReferrals || 0;
+  const monthlyCredits = stats?.monthlyCredits || 0;
+  const subscriptionFree = stats?.subscriptionFree || false;
+  const monthlyPayout = stats?.monthlyPayout || 0;
+
+  const formattedReferrals = referrals.map((ref) => ({
+    id: ref.id,
+    name: ref.referredUser
+      ? `${ref.referredUser.firstName || ""} ${ref.referredUser.lastName || ""}`.trim() ||
+        ref.referredUser.email ||
+        "Unknown"
+      : "Unknown",
+    phone: ref.referredUser?.phone || "N/A",
+    status: ref.status as "active" | "pending" | "inactive",
+    joinedDate: new Date(ref.createdAt!).toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    }),
+    earnings: ref.status === "active" ? 500 : 0,
+  }));
 
   return (
     <div className="min-h-screen bg-background">
-      <Navbar isLoggedIn={true} onLogout={onLogout} />
+      <Navbar isLoggedIn={true} onLogout={handleLogout} />
 
       <main className="pt-20 md:pt-24 pb-12">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -91,7 +122,10 @@ export function Dashboard({ onLogout }: DashboardProps) {
             className="mb-8"
           >
             <h1 className="text-3xl md:text-4xl font-display font-bold text-foreground">
-              Welcome back, <span className="gradient-neon-text">{mockUser.name.split(" ")[0]}</span>
+              Welcome back,{" "}
+              <span className="gradient-neon-text">
+                {user?.firstName || user?.email?.split("@")[0] || "User"}
+              </span>
             </h1>
             <p className="text-muted-foreground mt-2">
               Here's an overview of your referral performance
@@ -143,17 +177,28 @@ export function Dashboard({ onLogout }: DashboardProps) {
                   </p>
                 </div>
                 <div className="space-y-3">
-                  <Button
-                    variant="outline"
-                    className="w-full justify-start"
-                    onClick={() => setShowPayment(true)}
-                    data-testid="button-renew-subscription"
-                  >
-                    <CreditCard className="w-4 h-4 mr-2" />
-                    {subscriptionFree ? "View Payment History" : "Pay Subscription"}
-                  </Button>
+                  {!user?.subscription && (
+                    <Button
+                      variant="outline"
+                      className="w-full justify-start"
+                      onClick={() => setShowPayment(true)}
+                      data-testid="button-pay-subscription"
+                    >
+                      <CreditCard className="w-4 h-4 mr-2" />
+                      Pay Subscription
+                    </Button>
+                  )}
                   <Button
                     className="w-full justify-start neon-glow"
+                    onClick={() => {
+                      if (user?.referralCode) {
+                        navigator.clipboard.writeText(user.referralCode);
+                        toast({
+                          title: "Copied!",
+                          description: "Referral code copied to clipboard",
+                        });
+                      }
+                    }}
                     data-testid="button-invite-friends"
                   >
                     <Users className="w-4 h-4 mr-2" />
@@ -164,11 +209,19 @@ export function Dashboard({ onLogout }: DashboardProps) {
             </div>
           </div>
 
-          <div className="mb-8">
-            <ReferralCodeCard referralCode={mockUser.referralCode} />
-          </div>
+          {user?.referralCode && (
+            <div className="mb-8">
+              <ReferralCodeCard referralCode={user.referralCode} />
+            </div>
+          )}
 
-          <ReferralList referrals={mockReferrals} />
+          {referralsLoading ? (
+            <div className="glass rounded-2xl p-12 flex items-center justify-center">
+              <Loader2 className="w-8 h-8 animate-spin text-primary" />
+            </div>
+          ) : (
+            <ReferralList referrals={formattedReferrals} />
+          )}
         </div>
       </main>
 
@@ -178,23 +231,13 @@ export function Dashboard({ onLogout }: DashboardProps) {
         <DialogContent className="glass-strong border-primary/20 sm:max-w-md p-0">
           <DialogHeader className="p-6 pb-0">
             <DialogTitle className="text-xl font-display font-bold">
-              {subscriptionFree ? "Payment History" : "Pay Subscription"}
+              Pay Subscription
             </DialogTitle>
           </DialogHeader>
           <div className="p-6 pt-4">
-            {subscriptionFree ? (
-              <div className="text-center py-8">
-                <CheckCircle className="w-16 h-16 text-green-500 mx-auto mb-4" />
-                <h3 className="text-xl font-display font-bold text-foreground mb-2">
-                  Your subscription is FREE!
-                </h3>
-                <p className="text-muted-foreground">
-                  You have {activeReferrals} active referrals covering your subscription.
-                </p>
-              </div>
-            ) : (
-              <PaymentCard onPaymentComplete={() => setShowPayment(false)} />
-            )}
+            <PaymentCard
+              onPaymentComplete={() => setShowPayment(false)}
+            />
           </div>
         </DialogContent>
       </Dialog>
