@@ -1,0 +1,48 @@
+Build a web application called "Refer2Earn Liberia" using Django with HTML, CSS, and JavaScript for the frontend. Let the AI decide any additional tech stacks or libraries as needed.
+
+Core Concept:
+This is a referral-based earning platform. Users pay 1,500 Liberian Dollars per month via Mobile Money. They can earn credits and payouts by referring friends.
+
+Features:
+1. User Authentication:
+   - Sign up, login, logout.
+   - Each user gets a unique referral code.
+
+2. Subscription Payment:
+   - Integrate with Liberian Mobile Money providers (Lonestar Cell MTN Mobile Money, Orange Money Liberia).
+   - Users pay 1,500 LRD/month subscription via Mobile Money.
+   - Payment confirmation stored in database.
+
+3. Referral Program Logic:
+   - Each user has a referral code.
+   - When a new user signs up and pays subscription with a referral code:
+     - Referrer earns 500 LRD/month credit for as long as the referral stays subscribed.
+   - If a user has 3 active paying referrals:
+     - Their subscription is auto-covered (3 × 500 LRD = 1,500 LRD).
+   - If a user has more than 3 referrals:
+     - They start earning cash payouts of 500 LRD per extra referral each month.
+   - Example: 4 referrals = free subscription + 500 LRD payout; 5 referrals = free subscription + 1,000 LRD payout.
+
+4. Referral Dashboard:
+   - Show number of referrals, current credits, payout balance.
+   - Progress bar: “Invite 3 friends → free forever. Invite more → start earning.”
+
+5. Admin Panel:
+   - Manage users, referrals, and payouts.
+   - View subscription stats and revenue.
+   - Approve or trigger Mobile Money payouts.
+
+6. Fraud Prevention:
+   - Referral rewards only activate after referred user completes at least 1 billing cycle.
+   - Prevent duplicate accounts with same phone number.
+
+Business Logic:
+- At each billing cycle, check referral counts for each user.
+- Apply credits or payouts automatically.
+- Payouts sent via Mobile Money transfer to user’s registered phone number.
+
+Deliverables:
+- Django project with modular apps: accounts, referrals, subscriptions, payouts.
+- Referral dashboard page.
+- Admin dashboard for payouts and fraud monitoring.
+- Production-ready code with comments explaining key logic.
