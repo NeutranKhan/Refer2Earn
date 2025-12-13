@@ -3,19 +3,26 @@ import { getFirestore } from "firebase-admin/firestore";
 import { getAuth } from "firebase-admin/auth";
 
 // Initialize Firebase Admin
-// Note: This requires GOOGLE_APPLICATION_CREDENTIALS environment variable 
-// or a service account key file path to be set.
 if (!admin.apps.length) {
     try {
-        admin.initializeApp({
-            credential: admin.credential.applicationDefault(),
-            // projectId: "pizzadelivery-d6ef4", // Optional if using default creds
-        });
-        console.log("[Firebase Admin] Initialized successfully");
+        const serviceAccount = process.env.FIREBASE_SERVICE_ACCOUNT
+            ? JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT)
+            : undefined;
+
+        if (serviceAccount) {
+            admin.initializeApp({
+                credential: admin.credential.cert(serviceAccount),
+            });
+            console.log("[Firebase Admin] Initialized successfully with env vars");
+        } else {
+            // Fallback for local development or if GOOGLE_APPLICATION_CREDENTIALS is set
+            admin.initializeApp({
+                credential: admin.credential.applicationDefault(),
+            });
+            console.log("[Firebase Admin] Initialized successfully with default credentials");
+        }
     } catch (error) {
-        console.error("[Firebase Admin] Initialization failed. Make sure GOOGLE_APPLICATION_CREDENTIALS is set.");
-        // For development without credentials, we might want to mock or just log error
-        // but the app won't function correctly without it for DB access.
+        console.error("[Firebase Admin] Initialization failed:", error);
     }
 }
 
