@@ -1,27 +1,39 @@
 import type { Express } from "express";
-import { createServer, type Server } from "http";
+import type { Server } from "http";
 import { storage } from "./storage";
-import { setupAuth, isAuthenticated, isAdmin } from "./replitAuth";
+import { verifyFirebaseToken, isAdmin } from "./middleware/auth";
 
 export async function registerRoutes(
   httpServer: Server,
   app: Express
 ): Promise<Server> {
-  await setupAuth(app);
+  // await setupAuth(app); // Removed Replit Auth
 
   // Auth routes
-  app.get('/api/auth/user', isAuthenticated, async (req: any, res) => {
+  app.get('/api/auth/user', verifyFirebaseToken, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
-      const user = await storage.getUser(userId);
-      
+      const userId = req.user.uid;
+      let user = await storage.getUser(userId);
+
       if (!user) {
-        return res.status(404).json({ message: "User not found" });
+        const { email, picture, name, phone_number } = req.user;
+        const [firstName, ...lastNames] = name ? name.split(' ') : ["", ""];
+        const lastName = lastNames.join(' ');
+
+        user = await storage.upsertUser({
+          id: userId,
+          email: email || undefined,
+          firstName: firstName || undefined,
+          lastName: lastName || undefined,
+          profileImageUrl: picture || undefined,
+          phone: phone_number || undefined,
+          isAdmin: false,
+        });
       }
 
       const activeReferrals = await storage.getActiveReferralCount(userId);
       const subscription = await storage.getSubscription(userId);
-      
+
       res.json({
         ...user,
         activeReferrals,
@@ -34,9 +46,9 @@ export async function registerRoutes(
   });
 
   // Update user phone
-  app.patch('/api/users/phone', isAuthenticated, async (req: any, res) => {
+  app.patch('/api/users/phone', verifyFirebaseToken, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.uid;
       const { phone } = req.body;
 
       if (!phone) {
@@ -57,9 +69,9 @@ export async function registerRoutes(
   });
 
   // Apply referral code during signup
-  app.post('/api/referrals/apply', isAuthenticated, async (req: any, res) => {
+  app.post('/api/referrals/apply', verifyFirebaseToken, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.uid;
       const { referralCode } = req.body;
 
       if (!referralCode) {
@@ -96,9 +108,9 @@ export async function registerRoutes(
   });
 
   // Get user's referrals
-  app.get('/api/referrals', isAuthenticated, async (req: any, res) => {
+  app.get('/api/referrals', verifyFirebaseToken, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.uid;
       const referrals = await storage.getReferrals(userId);
       res.json(referrals);
     } catch (error) {
@@ -108,24 +120,24 @@ export async function registerRoutes(
   });
 
   // Get referral stats
-  app.get('/api/referrals/stats', isAuthenticated, async (req: any, res) => {
+  app.get('/api/referrals/stats', verifyFirebaseToken, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.uid;
       const referrals = await storage.getReferrals(userId);
-      
+
       const activeCount = referrals.filter(r => r.status === 'active').length;
       const pendingCount = referrals.filter(r => r.status === 'pending').length;
-      const totalCredits = activeCount * 500;
-      const subscriptionFree = activeCount >= 3;
-      const monthlyPayout = subscriptionFree ? Math.max(0, totalCredits - 1500) : 0;
+      const totalCredits = activeCount * 100; // Weekly credit (100 per referral)
+      const subscriptionFree = activeCount >= 2; // 2 * 100 >= 200
+      const weeklyPayout = subscriptionFree ? Math.max(0, totalCredits - 200) : 0;
 
       res.json({
         totalReferrals: referrals.length,
         activeReferrals: activeCount,
         pendingReferrals: pendingCount,
-        monthlyCredits: totalCredits,
+        weeklyCredits: totalCredits, // Renamed from monthlyCredits
         subscriptionFree,
-        monthlyPayout,
+        weeklyPayout, // Renamed from monthlyPayout
       });
     } catch (error) {
       console.error("Error fetching referral stats:", error);
@@ -134,9 +146,9 @@ export async function registerRoutes(
   });
 
   // Get subscription
-  app.get('/api/subscription', isAuthenticated, async (req: any, res) => {
+  app.get('/api/subscription', verifyFirebaseToken, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.uid;
       const subscription = await storage.getSubscription(userId);
       res.json(subscription || null);
     } catch (error) {
@@ -146,9 +158,9 @@ export async function registerRoutes(
   });
 
   // Create subscription payment
-  app.post('/api/subscription/pay', isAuthenticated, async (req: any, res) => {
+  app.post('/api/subscription/pay', verifyFirebaseToken, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.uid;
       const { paymentProvider, paymentPhone, referralCode } = req.body;
 
       if (!paymentProvider || !paymentPhone) {
@@ -172,14 +184,14 @@ export async function registerRoutes(
         userId,
         paymentProvider,
         paymentPhone,
-        amount: 1500,
+        amount: 200, // Weekly amount
       });
 
       await storage.createTransaction({
         userId,
         type: 'subscription_payment',
-        amount: -1500,
-        description: 'Monthly subscription payment',
+        amount: -200,
+        description: 'Weekly subscription payment',
         referenceId: subscription.id,
       });
 
@@ -187,11 +199,11 @@ export async function registerRoutes(
         const referral = await storage.getReferralByUsers(user.referredBy, userId);
         if (referral && referral.status === 'pending') {
           await storage.activateReferral(referral.id);
-          
+
           await storage.createTransaction({
             userId: user.referredBy,
             type: 'referral_credit',
-            amount: 500,
+            amount: 100,
             description: `Referral bonus from ${user.firstName || user.email}`,
             referenceId: referral.id,
           });
@@ -206,9 +218,9 @@ export async function registerRoutes(
   });
 
   // Get user's payouts
-  app.get('/api/payouts', isAuthenticated, async (req: any, res) => {
+  app.get('/api/payouts', verifyFirebaseToken, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.uid;
       const payouts = await storage.getUserPayouts(userId);
       res.json(payouts);
     } catch (error) {
@@ -218,9 +230,9 @@ export async function registerRoutes(
   });
 
   // Request payout
-  app.post('/api/payouts/request', isAuthenticated, async (req: any, res) => {
+  app.post('/api/payouts/request', verifyFirebaseToken, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.uid;
       const { amount, paymentPhone, paymentProvider } = req.body;
 
       if (!amount || !paymentPhone || !paymentProvider) {
@@ -228,8 +240,8 @@ export async function registerRoutes(
       }
 
       const activeReferrals = await storage.getActiveReferralCount(userId);
-      const monthlyCredits = activeReferrals * 500;
-      const maxPayout = Math.max(0, monthlyCredits - 1500);
+      const weeklyCredits = activeReferrals * 100;
+      const maxPayout = Math.max(0, weeklyCredits - 200);
 
       if (amount > maxPayout) {
         return res.status(400).json({ message: `Maximum payout available is ${maxPayout} LRD` });
@@ -244,9 +256,9 @@ export async function registerRoutes(
   });
 
   // Get transactions
-  app.get('/api/transactions', isAuthenticated, async (req: any, res) => {
+  app.get('/api/transactions', verifyFirebaseToken, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.uid;
       const transactions = await storage.getTransactions(userId);
       res.json(transactions);
     } catch (error) {
@@ -256,10 +268,10 @@ export async function registerRoutes(
   });
 
   // Admin routes
-  app.get('/api/admin/users', isAuthenticated, isAdmin, async (req: any, res) => {
+  app.get('/api/admin/users', verifyFirebaseToken, isAdmin, async (req: any, res) => {
     try {
       const users = await storage.getAllUsers();
-      
+
       const usersWithStats = await Promise.all(
         users.map(async (user) => {
           const activeReferrals = await storage.getActiveReferralCount(user.id);
@@ -285,7 +297,7 @@ export async function registerRoutes(
     }
   });
 
-  app.get('/api/admin/stats', isAuthenticated, isAdmin, async (req: any, res) => {
+  app.get('/api/admin/stats', verifyFirebaseToken, isAdmin, async (req: any, res) => {
     try {
       const stats = await storage.getDashboardStats();
       res.json(stats);
@@ -295,7 +307,7 @@ export async function registerRoutes(
     }
   });
 
-  app.get('/api/admin/payouts/pending', isAuthenticated, isAdmin, async (req: any, res) => {
+  app.get('/api/admin/payouts/pending', verifyFirebaseToken, isAdmin, async (req: any, res) => {
     try {
       const payouts = await storage.getPendingPayouts();
       res.json(payouts);
@@ -305,13 +317,13 @@ export async function registerRoutes(
     }
   });
 
-  app.post('/api/admin/payouts/:id/approve', isAuthenticated, isAdmin, async (req: any, res) => {
+  app.post('/api/admin/payouts/:id/approve', verifyFirebaseToken, isAdmin, async (req: any, res) => {
     try {
       const { id } = req.params;
-      const adminId = req.user.claims.sub;
-      
+      const adminId = req.user.uid;
+
       const payout = await storage.approvePayout(id, adminId);
-      
+
       await storage.createTransaction({
         userId: payout.userId,
         type: 'payout',
@@ -327,7 +339,7 @@ export async function registerRoutes(
     }
   });
 
-  app.post('/api/admin/payouts/:id/complete', isAuthenticated, isAdmin, async (req: any, res) => {
+  app.post('/api/admin/payouts/:id/complete', verifyFirebaseToken, isAdmin, async (req: any, res) => {
     try {
       const { id } = req.params;
       const payout = await storage.completePayout(id);
@@ -338,11 +350,11 @@ export async function registerRoutes(
     }
   });
 
-  app.patch('/api/admin/users/:id/admin', isAuthenticated, isAdmin, async (req: any, res) => {
+  app.patch('/api/admin/users/:id/admin', verifyFirebaseToken, isAdmin, async (req: any, res) => {
     try {
       const { id } = req.params;
       const { isAdmin: makeAdmin } = req.body;
-      
+
       const user = await storage.upsertUser({ id, isAdmin: makeAdmin });
       res.json(user);
     } catch (error) {

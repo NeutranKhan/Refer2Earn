@@ -16,18 +16,19 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { useAuth } from "@/hooks/useAuth";
+import { useAuth } from "@/providers/AuthProvider";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import type { Referral, User } from "@shared/schema";
+import { auth } from "@/lib/firebase";
 
 interface ReferralStats {
   totalReferrals: number;
   activeReferrals: number;
   pendingReferrals: number;
-  monthlyCredits: number;
+  weeklyCredits: number;
   subscriptionFree: boolean;
-  monthlyPayout: number;
+  weeklyPayout: number;
 }
 
 interface ReferralWithUser extends Referral {
@@ -71,8 +72,13 @@ export function Dashboard() {
     },
   });
 
-  const handleLogout = () => {
-    window.location.href = "/api/logout";
+  const handleLogout = async () => {
+    try {
+      await auth.signOut();
+      window.location.href = "/";
+    } catch (error) {
+      console.error("Logout failed", error);
+    }
   };
 
   const handlePayment = (provider: string, phone: string) => {
@@ -89,16 +95,16 @@ export function Dashboard() {
 
   const activeReferrals = stats?.activeReferrals || 0;
   const pendingReferrals = stats?.pendingReferrals || 0;
-  const monthlyCredits = stats?.monthlyCredits || 0;
+  const weeklyCredits = stats?.weeklyCredits || 0;
   const subscriptionFree = stats?.subscriptionFree || false;
-  const monthlyPayout = stats?.monthlyPayout || 0;
+  const weeklyPayout = stats?.weeklyPayout || 0;
 
   const formattedReferrals = referrals.map((ref) => ({
     id: ref.id,
     name: ref.referredUser
       ? `${ref.referredUser.firstName || ""} ${ref.referredUser.lastName || ""}`.trim() ||
-        ref.referredUser.email ||
-        "Unknown"
+      ref.referredUser.email ||
+      "Unknown"
       : "Unknown",
     phone: ref.referredUser?.phone || "N/A",
     status: ref.status as "active" | "pending" | "inactive",
@@ -107,7 +113,7 @@ export function Dashboard() {
       day: "numeric",
       year: "numeric",
     }),
-    earnings: ref.status === "active" ? 500 : 0,
+    earnings: ref.status === "active" ? 100 : 0,
   }));
 
   return (
@@ -141,22 +147,22 @@ export function Dashboard() {
               trend={{ value: 25, positive: true }}
             />
             <StatCard
-              title="Monthly Credits"
-              value={`${monthlyCredits.toLocaleString()} LRD`}
+              title="Weekly Credits"
+              value={`${weeklyCredits.toLocaleString()} LRD`}
               icon={Wallet}
               variant="accent"
             />
             <StatCard
-              title="Monthly Payout"
-              value={`${monthlyPayout.toLocaleString()} LRD`}
-              subtitle={subscriptionFree ? "Subscription covered" : "Need 3 referrals"}
+              title="Weekly Payout"
+              value={`${weeklyPayout.toLocaleString()} LRD`}
+              subtitle={subscriptionFree ? "Subscription covered" : "Need 2 referrals"}
               icon={TrendingUp}
               variant="success"
             />
             <StatCard
               title="Subscription Status"
-              value={subscriptionFree ? "FREE" : "1,500 LRD"}
-              subtitle={subscriptionFree ? "3+ referrals achieved" : "Invite more friends"}
+              value={subscriptionFree ? "FREE" : "200 LRD"}
+              subtitle={subscriptionFree ? "2+ referrals achieved" : "Invite more friends"}
               icon={subscriptionFree ? CheckCircle : CreditCard}
               variant={subscriptionFree ? "success" : "default"}
             />

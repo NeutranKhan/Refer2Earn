@@ -9,17 +9,16 @@ interface ProgressTrackerProps {
 
 export function ProgressTracker({
   currentReferrals,
-  targetReferrals = 3,
+  targetReferrals = 2,
 }: ProgressTrackerProps) {
   const progress = Math.min((currentReferrals / targetReferrals) * 100, 100);
   const isComplete = currentReferrals >= targetReferrals;
   const extraReferrals = Math.max(0, currentReferrals - targetReferrals);
-  const extraEarnings = extraReferrals * 500;
+  const extraEarnings = extraReferrals * 100;
 
   const milestones = [
-    { count: 1, label: "First Referral", icon: Star, reward: "500 LRD Credit" },
-    { count: 2, label: "Getting Closer", icon: Gift, reward: "1,000 LRD Credit" },
-    { count: 3, label: "Free Forever!", icon: Trophy, reward: "Free Subscription" },
+    { count: 1, label: "First Referral", icon: Star, reward: "100 LRD Credit" },
+    { count: 2, label: "Free Forever!", icon: Trophy, reward: "Free Subscription" },
   ];
 
   return (

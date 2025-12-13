@@ -5,6 +5,7 @@ import { Label } from "@/components/ui/label";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -17,6 +18,10 @@ interface AuthModalProps {
   onClose: () => void;
   onSuccess?: () => void;
 }
+
+import { auth } from "../lib/firebase";
+import { signInWithEmailAndPassword, createUserWithEmailAndPassword, updateProfile } from "firebase/auth";
+import { apiRequest } from "../lib/queryClient";
 
 export function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps) {
   const [mode, setMode] = useState<"login" | "signup">("login");
@@ -34,19 +39,63 @@ export function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps) {
     e.preventDefault();
     setIsLoading(true);
 
-    await new Promise((resolve) => setTimeout(resolve, 1500));
+    try {
+      if (mode === "signup") {
+        const userCredential = await createUserWithEmailAndPassword(auth, formData.email, formData.password);
+        await updateProfile(userCredential.user, {
+          displayName: formData.name,
+        });
 
-    toast({
-      title: mode === "login" ? "Welcome back!" : "Account created!",
-      description:
-        mode === "login"
-          ? "You've been logged in successfully."
-          : "Your account has been created. Check your phone for verification.",
-    });
+        // Sync extra data to backend
+        try {
+          if (formData.phone) {
+            await apiRequest("PATCH", "/api/users/phone", { phone: formData.phone });
+          }
+          if (formData.referralCode) {
+            await apiRequest("POST", "/api/referrals/apply", { referralCode: formData.referralCode });
+          }
+        } catch (err) {
+          console.error("Failed to sync user data", err);
+          // Non-fatal? Or warn user?
+        }
 
-    setIsLoading(false);
-    onSuccess?.();
-    onClose();
+        toast({
+          title: "Account created!",
+          description: "Your account has been created successfully.",
+        });
+      } else {
+        await signInWithEmailAndPassword(auth, formData.email, formData.password);
+        toast({
+          title: "Welcome back!",
+          description: "You've been logged in successfully.",
+        });
+      }
+
+      onSuccess?.();
+      onClose();
+    } catch (error: any) {
+      console.error("Auth error:", error);
+
+      let errorMessage = error.message || "An error occurred during authentication";
+      let errorTitle = "Authentication failed";
+
+      if (error.code === "auth/network-request-failed") {
+        errorTitle = "Connection Error";
+        errorMessage = "Unable to connect to authentication server. Please check your internet connection and ensure no firewalls or VPNs are blocking Firebase.";
+      } else if (error.code === "auth/email-already-in-use") {
+        errorMessage = "This email is already in use. Please try logging in instead.";
+      } else if (error.code === "auth/invalid-credential") {
+        errorMessage = "Invalid email or password. Please try again.";
+      }
+
+      toast({
+        title: errorTitle,
+        description: errorMessage,
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleInputChange = (field: string, value: string) => {
@@ -73,28 +122,29 @@ export function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps) {
           <DialogTitle className="text-2xl font-display font-bold text-foreground">
             {mode === "login" ? "Welcome Back" : "Create Account"}
           </DialogTitle>
+          <DialogDescription>
+            {mode === "login" ? "Sign in to your account" : "Create a new account"}
+          </DialogDescription>
         </DialogHeader>
 
         <div className="p-6 relative z-10">
           <div className="flex gap-2 p-1 rounded-xl glass mb-6">
             <button
               onClick={() => setMode("login")}
-              className={`flex-1 py-2 px-4 rounded-lg text-sm font-medium transition-all ${
-                mode === "login"
-                  ? "bg-primary text-primary-foreground"
-                  : "text-muted-foreground hover:text-foreground"
-              }`}
+              className={`flex-1 py-2 px-4 rounded-lg text-sm font-medium transition-all ${mode === "login"
+                ? "bg-primary text-primary-foreground"
+                : "text-muted-foreground hover:text-foreground"
+                }`}
               data-testid="button-mode-login"
             >
               Login
             </button>
             <button
               onClick={() => setMode("signup")}
-              className={`flex-1 py-2 px-4 rounded-lg text-sm font-medium transition-all ${
-                mode === "signup"
-                  ? "bg-primary text-primary-foreground"
-                  : "text-muted-foreground hover:text-foreground"
-              }`}
+              className={`flex-1 py-2 px-4 rounded-lg text-sm font-medium transition-all ${mode === "signup"
+                ? "bg-primary text-primary-foreground"
+                : "text-muted-foreground hover:text-foreground"
+                }`}
               data-testid="button-mode-signup"
             >
               Sign Up

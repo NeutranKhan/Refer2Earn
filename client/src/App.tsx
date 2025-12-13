@@ -8,44 +8,50 @@ import { Dashboard } from "@/pages/Dashboard";
 import { Admin } from "@/pages/Admin";
 import { About } from "@/pages/About";
 import NotFound from "@/pages/not-found";
-import { useAuth } from "@/hooks/useAuth";
+import { useAuth } from "@/providers/AuthProvider";
 
 function Router() {
   const { isAuthenticated, isLoading } = useAuth();
 
   return (
     <Switch>
-      {isLoading || !isAuthenticated ? (
+      <Route path="/" component={Landing} />
+      <Route path="/about" component={About} />
+      <Route path="/how-it-works" component={Landing} />
+      <Route path="/pricing" component={Landing} />
+
+      {isLoading ? (
+        <Route path="/dashboard" component={() => <div>Loading...</div>} />
+      ) : isAuthenticated ? (
         <>
-          <Route path="/" component={Landing} />
-          <Route path="/about" component={About} />
-          <Route path="/how-it-works" component={Landing} />
-          <Route path="/pricing" component={Landing} />
           <Route path="/dashboard" component={Dashboard} />
           <Route path="/admin" component={Admin} />
         </>
       ) : (
         <>
-          <Route path="/" component={Dashboard} />
-          <Route path="/about" component={About} />
-          <Route path="/how-it-works" component={Landing} />
-          <Route path="/pricing" component={Landing} />
-          <Route path="/dashboard" component={Dashboard} />
-          <Route path="/admin" component={Admin} />
+          <Route path="/dashboard" component={() => { window.location.href = "/"; return null; }} />
+          <Route path="/admin" component={() => { window.location.href = "/"; return null; }} />
         </>
       )}
+
       <Route component={NotFound} />
     </Switch>
   );
 }
 
+import { AuthProvider } from "@/providers/AuthProvider";
+
+// ... Router function ...
+
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        <Toaster />
-        <Router />
-      </TooltipProvider>
+      <AuthProvider>
+        <TooltipProvider>
+          <Toaster />
+          <Router />
+        </TooltipProvider>
+      </AuthProvider>
     </QueryClientProvider>
   );
 }

@@ -15,7 +15,7 @@ interface PaymentCardProps {
 }
 
 export function PaymentCard({
-  amount = 1500,
+  amount = 200,
   onPaymentComplete,
 }: PaymentCardProps) {
   const [provider, setProvider] = useState("mtn");
@@ -104,11 +104,10 @@ export function PaymentCard({
               <Label
                 key={p.id}
                 htmlFor={p.id}
-                className={`flex items-center gap-4 p-4 rounded-xl cursor-pointer transition-all glass-strong ${
-                  provider === p.id
+                className={`flex items-center gap-4 p-4 rounded-xl cursor-pointer transition-all glass-strong ${provider === p.id
                     ? "neon-border"
                     : "border border-transparent hover:border-primary/30"
-                }`}
+                  }`}
               >
                 <RadioGroupItem value={p.id} id={p.id} className="sr-only" />
                 <div
@@ -160,14 +159,14 @@ export function PaymentCard({
           />
           {referralCode && (
             <p className="text-sm text-green-500">
-              Referral code applied! Your referrer will earn 500 LRD credit.
+              Referral code applied! Your referrer will earn 100 LRD credit.
             </p>
           )}
         </div>
 
         <div className="p-4 rounded-xl bg-primary/10 border border-primary/30">
           <div className="flex items-center justify-between">
-            <span className="text-muted-foreground">Monthly Subscription</span>
+            <span className="text-muted-foreground">Weekly Subscription</span>
             <span className="text-2xl font-display font-bold text-foreground">
               {amount.toLocaleString()} LRD
             </span>

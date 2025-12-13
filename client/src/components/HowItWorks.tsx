@@ -7,7 +7,7 @@ export function HowItWorks() {
       icon: UserPlus,
       title: "Sign Up & Subscribe",
       description:
-        "Create your account and pay just 1,500 LRD/month via Mobile Money to get started.",
+        "Create your account and pay just 200 LRD/week via Mobile Money to get started.",
       color: "from-primary to-purple-600",
     },
     {
@@ -21,14 +21,14 @@ export function HowItWorks() {
       icon: Wallet,
       title: "Earn Credits",
       description:
-        "Earn 500 LRD credit for each friend who joins and pays their subscription.",
+        "Earn 100 LRD credit for each friend who joins and pays their subscription.",
       color: "from-pink-500 to-rose-600",
     },
     {
       icon: Trophy,
       title: "Get Free + Cash",
       description:
-        "With 3 referrals, your subscription is free. More referrals = cash payouts!",
+        "With 2 referrals, your subscription is free. More referrals = cash payouts!",
       color: "from-green-500 to-emerald-600",
     },
   ];

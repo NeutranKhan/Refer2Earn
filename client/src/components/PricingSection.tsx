@@ -12,7 +12,7 @@ export function PricingSection({ onGetStarted }: PricingSectionProps) {
     "Real-time earnings tracking",
     "Mobile Money integration",
     "Instant credit application",
-    "Monthly cash payouts",
+    "Weekly cash payouts",
     "24/7 customer support",
     "Referral analytics dashboard",
     "Fraud protection",
@@ -67,12 +67,12 @@ export function PricingSection({ onGetStarted }: PricingSectionProps) {
               <div className="mb-6">
                 <div className="flex items-baseline gap-2">
                   <span className="text-5xl md:text-6xl font-display font-bold text-foreground">
-                    1,500
+                    200
                   </span>
-                  <span className="text-xl text-muted-foreground">LRD/month</span>
+                  <span className="text-xl text-muted-foreground">LRD/week</span>
                 </div>
                 <p className="text-muted-foreground mt-2">
-                  Can be <span className="text-green-500 font-semibold">FREE</span> with 3+ referrals
+                  Can be <span className="text-green-500 font-semibold">FREE</span> with 2+ referrals
                 </p>
               </div>
 
@@ -110,12 +110,12 @@ export function PricingSection({ onGetStarted }: PricingSectionProps) {
           <div className="mt-8 pt-8 border-t border-white/10">
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-center">
               <div className="p-4 rounded-xl glass-strong">
-                <p className="text-2xl font-display font-bold text-primary">500 LRD</p>
+                <p className="text-2xl font-display font-bold text-primary">100 LRD</p>
                 <p className="text-sm text-muted-foreground mt-1">Per referral credit</p>
               </div>
               <div className="p-4 rounded-xl glass-strong">
                 <p className="text-2xl font-display font-bold text-green-500">FREE</p>
-                <p className="text-sm text-muted-foreground mt-1">With 3+ referrals</p>
+                <p className="text-sm text-muted-foreground mt-1">With 2+ referrals</p>
               </div>
               <div className="p-4 rounded-xl glass-strong">
                 <p className="text-2xl font-display font-bold text-accent">Unlimited</p>

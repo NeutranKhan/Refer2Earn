@@ -37,8 +37,8 @@ export function HeroSection({ onGetStarted, onLearnMore }: HeroSectionProps) {
             </h1>
 
             <p className="mt-6 text-lg md:text-xl text-muted-foreground max-w-xl mx-auto lg:mx-0">
-              Pay just 1,500 LRD/month. Refer 3 friends and your subscription is free forever. 
-              Keep referring to earn 500 LRD for each additional friend!
+              Pay just 200 LRD/week. Refer 2 friends and your subscription is free forever.
+              Keep referring to earn 100 LRD for each additional friend!
             </p>
 
             <div className="mt-8 flex flex-col sm:flex-row gap-4 justify-center lg:justify-start">
@@ -64,15 +64,15 @@ export function HeroSection({ onGetStarted, onLearnMore }: HeroSectionProps) {
 
             <div className="mt-12 flex flex-wrap gap-8 justify-center lg:justify-start">
               <div className="text-center">
-                <p className="text-2xl md:text-3xl font-display font-bold text-primary">1,500 LRD</p>
-                <p className="text-sm text-muted-foreground mt-1">Monthly Fee</p>
+                <p className="text-2xl md:text-3xl font-display font-bold text-primary">200 LRD</p>
+                <p className="text-sm text-muted-foreground mt-1">Weekly Fee</p>
               </div>
               <div className="text-center">
-                <p className="text-2xl md:text-3xl font-display font-bold text-accent">500 LRD</p>
+                <p className="text-2xl md:text-3xl font-display font-bold text-accent">100 LRD</p>
                 <p className="text-sm text-muted-foreground mt-1">Per Referral</p>
               </div>
               <div className="text-center">
-                <p className="text-2xl md:text-3xl font-display font-bold text-pink-500">3 Friends</p>
+                <p className="text-2xl md:text-3xl font-display font-bold text-pink-500">2 Friends</p>
                 <p className="text-sm text-muted-foreground mt-1">= Free Forever</p>
               </div>
             </div>
@@ -97,9 +97,9 @@ export function HeroSection({ onGetStarted, onLearnMore }: HeroSectionProps) {
 
               <div className="space-y-4">
                 {[
-                  { name: "Kwame Johnson", status: "Active", earnings: "+500 LRD" },
-                  { name: "Fatou Williams", status: "Active", earnings: "+500 LRD" },
-                  { name: "Prince Cooper", status: "Active", earnings: "+500 LRD" },
+                  { name: "Kwame Johnson", status: "Active", earnings: "+100 LRD" },
+                  { name: "Fatou Williams", status: "Active", earnings: "+100 LRD" },
+                  { name: "Prince Cooper", status: "Active", earnings: "+100 LRD" },
                   { name: "Mary Weah", status: "Pending", earnings: "Activating..." },
                 ].map((referral, index) => (
                   <motion.div
@@ -131,9 +131,9 @@ export function HeroSection({ onGetStarted, onLearnMore }: HeroSectionProps) {
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <Wallet className="w-5 h-5 text-primary" />
-                    <span className="font-medium text-foreground">Total Monthly Earnings</span>
+                    <span className="font-medium text-foreground">Total Weekly Earnings</span>
                   </div>
-                  <span className="text-xl font-display font-bold text-primary">1,500 LRD</span>
+                  <span className="text-xl font-display font-bold text-primary">200 LRD</span>
                 </div>
                 <p className="text-sm text-muted-foreground mt-2">
                   Your subscription is covered + 0 LRD payout

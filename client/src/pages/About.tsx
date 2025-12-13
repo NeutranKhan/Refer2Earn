@@ -2,17 +2,26 @@ import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
 import { motion } from "framer-motion";
 import { Users, Target, Zap, Heart } from "lucide-react";
-import { useAuth } from "@/hooks/useAuth";
+import { useAuth } from "@/providers/AuthProvider";
+import { useState } from "react";
+import { AuthModal } from "@/components/AuthModal";
+import { auth } from "@/lib/firebase";
+import { signOut } from "firebase/auth";
 
 export function About() {
   const { isAuthenticated } = useAuth();
+  const [showAuthModal, setShowAuthModal] = useState(false);
 
   const handleLogin = () => {
-    window.location.href = "/api/login";
+    setShowAuthModal(true);
   };
 
-  const handleLogout = () => {
-    window.location.href = "/api/logout";
+  const handleLogout = async () => {
+    try {
+      await signOut(auth);
+    } catch (error) {
+      console.error("Logout failed", error);
+    }
   };
 
   return (
@@ -149,7 +158,7 @@ export function About() {
                   2. They Subscribe
                 </h3>
                 <p className="text-muted-foreground">
-                  When someone uses your referral code to subscribe with a 1,500 LRD monthly payment, they become an active referral.
+                  When someone uses your referral code to subscribe with a 200 LRD weekly payment, they become an active referral.
                 </p>
               </div>
               <div>
@@ -157,7 +166,7 @@ export function About() {
                   3. Earn Credits
                 </h3>
                 <p className="text-muted-foreground">
-                  You earn 500 LRD in credits for each active referral. With 3+ active referrals, your subscription becomes completely free.
+                  You earn 100 LRD in credits for each active referral. With 2+ active referrals, your subscription becomes completely free.
                 </p>
               </div>
               <div>
@@ -165,7 +174,7 @@ export function About() {
                   4. Get Paid
                 </h3>
                 <p className="text-muted-foreground">
-                  With 4+ active referrals, you can request cash payouts directly to your Mobile Money account. We handle all the processing.
+                  With 3+ active referrals, you can request cash payouts directly to your Mobile Money account. We handle all the processing.
                 </p>
               </div>
             </div>
@@ -174,6 +183,11 @@ export function About() {
       </main>
 
       <Footer />
+      <AuthModal
+        isOpen={showAuthModal}
+        onClose={() => setShowAuthModal(false)}
+        onSuccess={() => window.location.href = "/dashboard"}
+      />
     </div>
   );
 }

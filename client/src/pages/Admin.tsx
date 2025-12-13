@@ -9,9 +9,10 @@ import { Users, Wallet, TrendingUp, CreditCard, AlertTriangle, CheckCircle, Load
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { useAuth } from "@/hooks/useAuth";
+import { useAuth } from "@/providers/AuthProvider";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import type { Payout, User } from "@shared/schema";
+import { auth } from "@/lib/firebase";
 
 interface AdminUser extends User {
   referralsCount: number;
@@ -43,7 +44,7 @@ export function Admin() {
         variant: "destructive",
       });
       setTimeout(() => {
-        window.location.href = "/api/login";
+        window.location.href = "/";
       }, 500);
     }
   }, [authLoading, isAuthenticated, toast]);
@@ -88,8 +89,13 @@ export function Admin() {
     },
   });
 
-  const handleLogout = () => {
-    window.location.href = "/api/logout";
+  const handleLogout = async () => {
+    try {
+      await auth.signOut();
+      window.location.href = "/";
+    } catch (error) {
+      console.error("Logout failed", error);
+    }
   };
 
   if (authLoading || usersLoading || statsLoading) {
@@ -249,7 +255,7 @@ export function Admin() {
                           <p className="font-medium text-foreground">
                             {payout.user
                               ? `${payout.user.firstName || ""} ${payout.user.lastName || ""}`.trim() ||
-                                payout.user.email
+                              payout.user.email
                               : "Unknown"}
                           </p>
                           <p className="text-sm text-muted-foreground">

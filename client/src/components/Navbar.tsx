@@ -18,14 +18,15 @@ export function Navbar({ isLoggedIn = false, isAdmin = false, onLogin, onLogout 
 
   const navLinks = isLoggedIn
     ? [
-        { href: "/", label: "Home" },
-        { href: "/dashboard", label: "Dashboard" },
-        ...(isAdmin ? [{ href: "/admin", label: "Admin" }] : []),
-      ]
+      { href: "/", label: "Home" },
+      { href: "/dashboard", label: "Dashboard" },
+      { href: "/about", label: "About Us" },
+      ...(isAdmin ? [{ href: "/admin", label: "Admin" }] : []),
+    ]
     : [
-        { href: "/", label: "Home" },
-        { href: "/about", label: "About Us" },
-      ];
+      { href: "/", label: "Home" },
+      { href: "/about", label: "About Us" },
+    ];
 
   const allLinks = navLinks;
 

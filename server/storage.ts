@@ -1,9 +1,4 @@
 import {
-  users,
-  subscriptions,
-  referrals,
-  payouts,
-  transactions,
   type User,
   type UpsertUser,
   type Subscription,
@@ -11,9 +6,32 @@ import {
   type Payout,
   type Transaction,
 } from "@shared/schema";
-import { db } from "./db";
-import { eq, and, desc, sql } from "drizzle-orm";
-import { randomBytes } from "crypto";
+import { db } from "./lib/firebase"; // Using Firebase Admin Firestore
+
+// Helper to convert Firestore timestamp to Date and handle missing fields
+const convertDates = (data: any): any => {
+  if (!data) return data;
+  const result = { ...data };
+
+  const dateFields = [
+    'createdAt', 'updatedAt', 'startDate', 'endDate',
+    'activatedAt', 'approvedAt', 'completedAt', 'expire'
+  ];
+
+  for (const field of dateFields) {
+    if (result[field] && typeof result[field].toDate === 'function') {
+      result[field] = result[field].toDate();
+    } else if (result[field] && typeof result[field] === 'string') {
+      // already string or ISO? keep or parse if needed. 
+      // Firestore usually returns Timestamp objects.
+      result[field] = new Date(result[field]);
+    }
+  }
+  return result;
+};
+
+// Helper to generate IDs if not provided (though for users we use Auth UID)
+const generateId = () => db.collection('_').doc().id;
 
 function generateReferralCode(): string {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
@@ -31,26 +49,26 @@ export interface IStorage {
   getUserByPhone(phone: string): Promise<User | undefined>;
   updateUserPhone(userId: string, phone: string): Promise<User>;
   getAllUsers(): Promise<User[]>;
-  
+
   getSubscription(userId: string): Promise<Subscription | undefined>;
   createSubscription(data: Partial<Subscription> & { userId: string }): Promise<Subscription>;
   updateSubscription(id: string, data: Partial<Subscription>): Promise<Subscription>;
-  
+
   getReferrals(userId: string): Promise<(Referral & { referredUser: User | null })[]>;
   getReferralByUsers(referrerId: string, referredUserId: string): Promise<Referral | undefined>;
   createReferral(referrerId: string, referredUserId: string): Promise<Referral>;
   activateReferral(id: string): Promise<Referral>;
   getActiveReferralCount(userId: string): Promise<number>;
-  
+
   getPendingPayouts(): Promise<(Payout & { user: User | null })[]>;
   getUserPayouts(userId: string): Promise<Payout[]>;
   createPayout(userId: string, amount: number, phone: string, provider: string): Promise<Payout>;
   approvePayout(payoutId: string, adminId: string): Promise<Payout>;
   completePayout(payoutId: string): Promise<Payout>;
-  
+
   getTransactions(userId: string): Promise<Transaction[]>;
   createTransaction(data: Partial<Transaction> & { userId: string; type: string; amount: number }): Promise<Transaction>;
-  
+
   getDashboardStats(): Promise<{
     totalUsers: number;
     activeUsers: number;
@@ -60,69 +78,89 @@ export interface IStorage {
   }>;
 }
 
-export class DatabaseStorage implements IStorage {
+export class FirestoreStorage implements IStorage {
   async getUser(id: string): Promise<User | undefined> {
-    const [user] = await db.select().from(users).where(eq(users.id, id));
-    return user;
+    const doc = await db.collection('users').doc(id).get();
+    if (!doc.exists) return undefined;
+    return convertDates({ id: doc.id, ...doc.data() }) as User;
   }
 
   async upsertUser(userData: Partial<UpsertUser> & { id: string }): Promise<User> {
-    const existingUser = await this.getUser(userData.id);
-    
-    if (existingUser) {
-      const [user] = await db
-        .update(users)
-        .set({
-          ...userData,
-          updatedAt: new Date(),
-        })
-        .where(eq(users.id, userData.id))
-        .returning();
-      return user;
+    const userRef = db.collection('users').doc(userData.id);
+    const doc = await userRef.get();
+
+    if (doc.exists) {
+      const updateData = {
+        ...userData,
+        updatedAt: new Date(),
+      };
+      await userRef.update(updateData);
+      const updated = await userRef.get();
+      return convertDates({ id: updated.id, ...updated.data() }) as User;
     }
 
     const referralCode = generateReferralCode();
-    const [user] = await db
-      .insert(users)
-      .values({
-        ...userData,
-        referralCode,
-      })
-      .returning();
-    return user;
+    const newUser = {
+      ...userData,
+      referralCode,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      isAdmin: userData.isAdmin || false,
+    };
+
+    await userRef.set(newUser);
+    return convertDates(newUser) as User;
   }
 
   async getUserByReferralCode(code: string): Promise<User | undefined> {
-    const [user] = await db.select().from(users).where(eq(users.referralCode, code.toUpperCase()));
-    return user;
+    const snapshot = await db.collection('users')
+      .where('referralCode', '==', code.toUpperCase())
+      .limit(1)
+      .get();
+
+    if (snapshot.empty) return undefined;
+    const doc = snapshot.docs[0];
+    return convertDates({ id: doc.id, ...doc.data() }) as User;
   }
 
   async getUserByPhone(phone: string): Promise<User | undefined> {
-    const [user] = await db.select().from(users).where(eq(users.phone, phone));
-    return user;
+    const snapshot = await db.collection('users')
+      .where('phone', '==', phone)
+      .limit(1)
+      .get();
+
+    if (snapshot.empty) return undefined;
+    const doc = snapshot.docs[0];
+    return convertDates({ id: doc.id, ...doc.data() }) as User;
   }
 
   async updateUserPhone(userId: string, phone: string): Promise<User> {
-    const [user] = await db
-      .update(users)
-      .set({ phone, updatedAt: new Date() })
-      .where(eq(users.id, userId))
-      .returning();
-    return user;
+    const userRef = db.collection('users').doc(userId);
+    await userRef.update({
+      phone,
+      updatedAt: new Date()
+    });
+    const updated = await userRef.get();
+    return convertDates({ id: updated.id, ...updated.data() }) as User;
   }
 
   async getAllUsers(): Promise<User[]> {
-    return db.select().from(users).orderBy(desc(users.createdAt));
+    const snapshot = await db.collection('users')
+      .orderBy('createdAt', 'desc')
+      .get();
+    return snapshot.docs.map(doc => convertDates({ id: doc.id, ...doc.data() }) as User);
   }
 
   async getSubscription(userId: string): Promise<Subscription | undefined> {
-    const [sub] = await db
-      .select()
-      .from(subscriptions)
-      .where(eq(subscriptions.userId, userId))
-      .orderBy(desc(subscriptions.createdAt))
-      .limit(1);
-    return sub;
+    const snapshot = await db.collection('subscriptions')
+      .where('userId', '==', userId)
+      .orderBy('createdAt', 'desc')
+      .limit(1)
+      .get();
+
+    if (snapshot.empty) return undefined;
+    const doc = snapshot.docs[0];
+    return convertDates({ id: doc.id, ...doc.data() }) as Subscription;
   }
 
   async createSubscription(data: Partial<Subscription> & { userId: string }): Promise<Subscription> {
@@ -130,205 +168,204 @@ export class DatabaseStorage implements IStorage {
     const endDate = new Date(now);
     endDate.setMonth(endDate.getMonth() + 1);
 
-    const [sub] = await db
-      .insert(subscriptions)
-      .values({
-        ...data,
-        startDate: now,
-        endDate,
-        status: 'active',
-      })
-      .returning();
-    return sub;
+    const subData = {
+      ...data,
+      startDate: now,
+      endDate,
+      status: 'active',
+      createdAt: now,
+      updatedAt: now,
+    };
+
+    const docRef = await db.collection('subscriptions').add(subData);
+    const doc = await docRef.get();
+    return convertDates({ id: doc.id, ...doc.data() }) as Subscription;
   }
 
   async updateSubscription(id: string, data: Partial<Subscription>): Promise<Subscription> {
-    const [sub] = await db
-      .update(subscriptions)
-      .set({ ...data, updatedAt: new Date() })
-      .where(eq(subscriptions.id, id))
-      .returning();
-    return sub;
+    const subRef = db.collection('subscriptions').doc(id);
+    await subRef.update({ ...data, updatedAt: new Date() });
+    const updated = await subRef.get();
+    return convertDates({ id: updated.id, ...updated.data() }) as Subscription;
   }
 
   async getReferrals(userId: string): Promise<(Referral & { referredUser: User | null })[]> {
-    const refs = await db
-      .select()
-      .from(referrals)
-      .where(eq(referrals.referrerId, userId))
-      .orderBy(desc(referrals.createdAt));
+    const snapshot = await db.collection('referrals')
+      .where('referrerId', '==', userId)
+      .orderBy('createdAt', 'desc')
+      .get();
 
-    const result = await Promise.all(
-      refs.map(async (ref) => {
-        const [referredUser] = await db
-          .select()
-          .from(users)
-          .where(eq(users.id, ref.referredUserId));
-        return { ...ref, referredUser: referredUser || null };
-      })
-    );
+    const referrals = snapshot.docs.map(doc => convertDates({ id: doc.id, ...doc.data() }) as Referral);
 
-    return result;
+    // Enrich with referred users
+    const results = await Promise.all(referrals.map(async (ref) => {
+      const user = await this.getUser(ref.referredUserId);
+      return { ...ref, referredUser: user || null };
+    }));
+
+    return results;
   }
 
   async getReferralByUsers(referrerId: string, referredUserId: string): Promise<Referral | undefined> {
-    const [ref] = await db
-      .select()
-      .from(referrals)
-      .where(
-        and(
-          eq(referrals.referrerId, referrerId),
-          eq(referrals.referredUserId, referredUserId)
-        )
-      );
-    return ref;
+    const snapshot = await db.collection('referrals')
+      .where('referrerId', '==', referrerId)
+      .where('referredUserId', '==', referredUserId)
+      .limit(1)
+      .get();
+
+    if (snapshot.empty) return undefined;
+    const doc = snapshot.docs[0];
+    return convertDates({ id: doc.id, ...doc.data() }) as Referral;
   }
 
   async createReferral(referrerId: string, referredUserId: string): Promise<Referral> {
-    const [ref] = await db
-      .insert(referrals)
-      .values({
-        referrerId,
-        referredUserId,
-        status: 'pending',
-        creditAmount: 500,
-      })
-      .returning();
-    return ref;
+    const refData = {
+      referrerId,
+      referredUserId,
+      status: 'pending',
+      creditAmount: 500,
+      createdAt: new Date(),
+    };
+
+    const docRef = await db.collection('referrals').add(refData);
+    const doc = await docRef.get();
+    return convertDates({ id: doc.id, ...doc.data() }) as Referral;
   }
 
   async activateReferral(id: string): Promise<Referral> {
-    const [ref] = await db
-      .update(referrals)
-      .set({
-        status: 'active',
-        activatedAt: new Date(),
-      })
-      .where(eq(referrals.id, id))
-      .returning();
-    return ref;
+    const refRef = db.collection('referrals').doc(id);
+    await refRef.update({
+      status: 'active',
+      activatedAt: new Date(),
+    });
+    const updated = await refRef.get();
+    return convertDates({ id: updated.id, ...updated.data() }) as Referral;
   }
 
   async getActiveReferralCount(userId: string): Promise<number> {
-    const result = await db
-      .select({ count: sql<number>`count(*)` })
-      .from(referrals)
-      .where(
-        and(
-          eq(referrals.referrerId, userId),
-          eq(referrals.status, 'active')
-        )
-      );
-    return Number(result[0]?.count) || 0;
+    const snapshot = await db.collection('referrals')
+      .where('referrerId', '==', userId)
+      .where('status', '==', 'active')
+      .count()
+      .get();
+    return snapshot.data().count;
   }
 
   async getPendingPayouts(): Promise<(Payout & { user: User | null })[]> {
-    const pendingPayouts = await db
-      .select()
-      .from(payouts)
-      .where(eq(payouts.status, 'pending'))
-      .orderBy(desc(payouts.createdAt));
+    const snapshot = await db.collection('payouts')
+      .where('status', '==', 'pending')
+      .orderBy('createdAt', 'desc')
+      .get();
 
-    const result = await Promise.all(
-      pendingPayouts.map(async (payout) => {
-        const [user] = await db.select().from(users).where(eq(users.id, payout.userId));
-        return { ...payout, user: user || null };
-      })
-    );
+    const payouts = snapshot.docs.map(doc => convertDates({ id: doc.id, ...doc.data() }) as Payout);
 
-    return result;
+    const results = await Promise.all(payouts.map(async (payout) => {
+      const user = await this.getUser(payout.userId);
+      return { ...payout, user: user || null };
+    }));
+
+    return results;
   }
 
   async getUserPayouts(userId: string): Promise<Payout[]> {
-    return db
-      .select()
-      .from(payouts)
-      .where(eq(payouts.userId, userId))
-      .orderBy(desc(payouts.createdAt));
+    const snapshot = await db.collection('payouts')
+      .where('userId', '==', userId)
+      .orderBy('createdAt', 'desc')
+      .get();
+    return snapshot.docs.map(doc => convertDates({ id: doc.id, ...doc.data() }) as Payout);
   }
 
   async createPayout(userId: string, amount: number, phone: string, provider: string): Promise<Payout> {
-    const [payout] = await db
-      .insert(payouts)
-      .values({
-        userId,
-        amount,
-        paymentPhone: phone,
-        paymentProvider: provider,
-        status: 'pending',
-      })
-      .returning();
-    return payout;
+    const payoutData = {
+      userId,
+      amount,
+      paymentPhone: phone,
+      paymentProvider: provider,
+      status: 'pending',
+      createdAt: new Date(),
+    };
+
+    const docRef = await db.collection('payouts').add(payoutData);
+    const doc = await docRef.get();
+    return convertDates({ id: doc.id, ...doc.data() }) as Payout;
   }
 
   async approvePayout(payoutId: string, adminId: string): Promise<Payout> {
-    const [payout] = await db
-      .update(payouts)
-      .set({
-        status: 'approved',
-        approvedBy: adminId,
-        approvedAt: new Date(),
-      })
-      .where(eq(payouts.id, payoutId))
-      .returning();
-    return payout;
+    const ref = db.collection('payouts').doc(payoutId);
+    await ref.update({
+      status: 'approved',
+      approvedBy: adminId,
+      approvedAt: new Date(),
+    });
+    const updated = await ref.get();
+    return convertDates({ id: updated.id, ...updated.data() }) as Payout;
   }
 
   async completePayout(payoutId: string): Promise<Payout> {
-    const [payout] = await db
-      .update(payouts)
-      .set({
-        status: 'completed',
-        completedAt: new Date(),
-      })
-      .where(eq(payouts.id, payoutId))
-      .returning();
-    return payout;
+    const ref = db.collection('payouts').doc(payoutId);
+    await ref.update({
+      status: 'completed',
+      completedAt: new Date(),
+    });
+    const updated = await ref.get();
+    return convertDates({ id: updated.id, ...updated.data() }) as Payout;
   }
 
   async getTransactions(userId: string): Promise<Transaction[]> {
-    return db
-      .select()
-      .from(transactions)
-      .where(eq(transactions.userId, userId))
-      .orderBy(desc(transactions.createdAt));
+    const snapshot = await db.collection('transactions')
+      .where('userId', '==', userId)
+      .orderBy('createdAt', 'desc')
+      .get();
+    return snapshot.docs.map(doc => convertDates({ id: doc.id, ...doc.data() }) as Transaction);
   }
 
   async createTransaction(data: Partial<Transaction> & { userId: string; type: string; amount: number }): Promise<Transaction> {
-    const [tx] = await db
-      .insert(transactions)
-      .values(data)
-      .returning();
-    return tx;
+    const txData = {
+      ...data,
+      createdAt: new Date(),
+    };
+    const docRef = await db.collection('transactions').add(txData);
+    const doc = await docRef.get();
+    return convertDates({ id: doc.id, ...doc.data() }) as Transaction;
   }
 
   async getDashboardStats() {
-    const allUsers = await db.select().from(users);
-    const activeSubscriptions = await db
-      .select()
-      .from(subscriptions)
-      .where(eq(subscriptions.status, 'active'));
-    const freeSubscriptions = await db
-      .select()
-      .from(subscriptions)
-      .where(eq(subscriptions.status, 'free'));
-    const pendingPayoutsList = await db
-      .select()
-      .from(payouts)
-      .where(eq(payouts.status, 'pending'));
-    const allReferrals = await db.select().from(referrals);
+    const usersSnapshot = await db.collection('users').count().get();
+    const totalUsers = usersSnapshot.data().count;
 
-    const totalRevenue = activeSubscriptions.length * 1500;
-    const pendingPayoutsAmount = pendingPayoutsList.reduce((sum, p) => sum + p.amount, 0);
+    // These queries are expensive if we count everything client side.
+    // For now we will do simple queries. Real production apps might use aggregation functions.
+
+    const subsSnapshot = await db.collection('subscriptions').get();
+    let activeUsers = 0;
+    let totalRevenue = 0;
+
+    subsSnapshot.forEach(doc => {
+      const data = doc.data();
+      if (data.status === 'active' || data.status === 'free') {
+        activeUsers++;
+      }
+      if (data.status === 'active') {
+        totalRevenue += 1500; // Assumption based on existing logic
+      }
+    });
+
+    const payoutsSnapshot = await db.collection('payouts').where('status', '==', 'pending').get();
+    let pendingPayouts = 0;
+    payoutsSnapshot.forEach(doc => {
+      pendingPayouts += doc.data().amount || 0;
+    });
+
+    const referralSnapshot = await db.collection('referrals').count().get();
 
     return {
-      totalUsers: allUsers.length,
-      activeUsers: activeSubscriptions.length + freeSubscriptions.length,
+      totalUsers,
+      activeUsers,
       totalRevenue,
-      pendingPayouts: pendingPayoutsAmount,
-      totalReferrals: allReferrals.length,
+      pendingPayouts,
+      totalReferrals: referralSnapshot.data().count,
     };
   }
 }
 
-export const storage = new DatabaseStorage();
+export const storage = new FirestoreStorage();

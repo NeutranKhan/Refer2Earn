@@ -5,14 +5,14 @@ import { Calculator, TrendingUp, Wallet, Gift } from "lucide-react";
 
 export function EarningsCalculator() {
   const [referrals, setReferrals] = useState([5]);
-  const monthlyFee = 1500;
-  const creditPerReferral = 500;
+  const monthlyFee = 200; // Actually weekly fee now
+  const creditPerReferral = 100;
 
   const totalCredits = referrals[0] * creditPerReferral;
-  const subscriptionCovered = referrals[0] >= 3;
+  const subscriptionCovered = referrals[0] >= 2;
   const excessCredits = Math.max(0, totalCredits - monthlyFee);
   const monthlyPayout = subscriptionCovered ? excessCredits : 0;
-  const yearlyPayout = monthlyPayout * 12;
+  const yearlyPayout = monthlyPayout * 52; // Weekly * 52 weeks
 
   return (
     <section className="py-20 md:py-32 relative overflow-hidden">
@@ -100,7 +100,7 @@ export function EarningsCalculator() {
             <div className="glass-strong rounded-xl p-4">
               <div className="flex items-center gap-2 mb-2">
                 <Wallet className="w-4 h-4 text-pink-500" />
-                <span className="text-sm text-muted-foreground">Monthly Payout</span>
+                <span className="text-sm text-muted-foreground">Weekly Payout</span>
               </div>
               <p className="text-2xl font-display font-bold text-green-500">
                 +{monthlyPayout.toLocaleString()} LRD
@@ -133,10 +133,10 @@ export function EarningsCalculator() {
             </motion.div>
           )}
 
-          {referrals[0] < 3 && (
+          {referrals[0] < 2 && (
             <div className="p-4 rounded-xl bg-primary/10 border border-primary/30 text-center">
               <p className="text-foreground">
-                Invite <span className="font-bold text-primary">{3 - referrals[0]}</span> more friend{3 - referrals[0] !== 1 ? 's' : ''} to get your subscription for{" "}
+                Invite <span className="font-bold text-primary">{2 - referrals[0]}</span> more friend{2 - referrals[0] !== 1 ? 's' : ''} to get your subscription for{" "}
                 <span className="font-bold text-green-500">FREE</span>!
               </p>
             </div>
