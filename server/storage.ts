@@ -6,7 +6,7 @@ import {
   type Payout,
   type Transaction,
 } from "@shared/schema";
-import { db } from "./lib/firebase"; // Using Firebase Admin Firestore
+import { db } from "./lib/firebase.js"; // Using Firebase Admin Firestore
 
 // Helper to convert Firestore timestamp to Date and handle missing fields
 const convertDates = (data: any): any => {

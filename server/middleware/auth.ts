@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from "express";
-import { auth } from "../lib/firebase";
+import { auth } from "../lib/firebase.js";
 
 export const verifyFirebaseToken = async (req: Request, res: Response, next: NextFunction) => {
     const authHeader = req.headers.authorization;
@@ -35,7 +35,7 @@ export const isAdmin = async (req: Request, res: Response, next: NextFunction) =
     }
 
     // We could add custom claims for admin, but let's stick to DB check for migration parity
-    const { storage } = await import("../storage");
+    const { storage } = await import("../storage.js");
     const dbUser = await storage.getUser(user.uid);
 
     if (!dbUser?.isAdmin) {
