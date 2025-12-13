@@ -1,5 +1,5 @@
-import { app } from '../server/app';
-import { registerRoutes } from '../server/routes';
+import { app } from '../server/app.js';
+import { registerRoutes } from '../server/routes.js';
 import { createServer } from 'http';
 
 // Initialize the app lazily
