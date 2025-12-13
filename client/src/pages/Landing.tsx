@@ -60,7 +60,7 @@ export function Landing() {
       <AuthModal
         isOpen={showAuthModal}
         onClose={() => setShowAuthModal(false)}
-        onSuccess={() => window.location.href = "/dashboard"}
+        onSuccess={() => setLocation("/dashboard")}
       />
     </div>
   );
