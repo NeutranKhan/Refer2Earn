@@ -6,3 +6,4 @@ vite.config.ts.*
 *.tar.gz
 .env
 serviceAccountKey.json
+vercel_service_account.json

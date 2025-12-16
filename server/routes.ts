@@ -10,16 +10,29 @@ export async function registerRoutes(
   // await setupAuth(app); // Removed Replit Auth
 
   // Auth routes
+  // Auth routes
   app.get('/api/auth/user', verifyFirebaseToken, async (req: any, res) => {
     try {
       const userId = req.user.uid;
+      const referralCode = req.query.referralCode as string;
       let user = await storage.getUser(userId);
 
       if (!user) {
+        // New user - Mandate Referral Code
+        if (!referralCode) {
+          return res.status(400).json({ message: "Referral code is required for signup" });
+        }
+
+        const referrer = await storage.getUserByReferralCode(referralCode);
+        if (!referrer) {
+          return res.status(400).json({ message: "Invalid referral code" });
+        }
+
         const { email, picture, name, phone_number } = req.user;
         const [firstName, ...lastNames] = name ? name.split(' ') : ["", ""];
         const lastName = lastNames.join(' ');
 
+        // Create user with referrer
         user = await storage.upsertUser({
           id: userId,
           email: email || undefined,
@@ -27,8 +40,12 @@ export async function registerRoutes(
           lastName: lastName || undefined,
           profileImageUrl: picture || undefined,
           phone: phone_number || undefined,
+          referredBy: referrer.id, // Set referrer immediately
           isAdmin: false,
         });
+
+        // Create the referral record immediately
+        await storage.createReferral(referrer.id, userId);
       }
 
       const activeReferrals = await storage.getActiveReferralCount(userId);
@@ -127,9 +144,9 @@ export async function registerRoutes(
 
       const activeCount = referrals.filter(r => r.status === 'active').length;
       const pendingCount = referrals.filter(r => r.status === 'pending').length;
-      const totalCredits = activeCount * 100; // Weekly credit (100 per referral)
-      const subscriptionFree = activeCount >= 2; // 2 * 100 >= 200
-      const weeklyPayout = subscriptionFree ? Math.max(0, totalCredits - 200) : 0;
+      const totalCredits = activeCount * 250; // Weekly credit (250 per referral)
+      const subscriptionFree = activeCount >= 2; // 2 * 250 >= 500
+      const weeklyPayout = subscriptionFree ? Math.max(0, totalCredits - 500) : 0;
 
       res.json({
         totalReferrals: referrals.length,
@@ -184,13 +201,13 @@ export async function registerRoutes(
         userId,
         paymentProvider,
         paymentPhone,
-        amount: 200, // Weekly amount
+        amount: 500, // Weekly amount
       });
 
       await storage.createTransaction({
         userId,
         type: 'subscription_payment',
-        amount: -200,
+        amount: -500,
         description: 'Weekly subscription payment',
         referenceId: subscription.id,
       });
@@ -203,7 +220,7 @@ export async function registerRoutes(
           await storage.createTransaction({
             userId: user.referredBy,
             type: 'referral_credit',
-            amount: 100,
+            amount: 250,
             description: `Referral bonus from ${user.firstName || user.email}`,
             referenceId: referral.id,
           });
@@ -240,8 +257,8 @@ export async function registerRoutes(
       }
 
       const activeReferrals = await storage.getActiveReferralCount(userId);
-      const weeklyCredits = activeReferrals * 100;
-      const maxPayout = Math.max(0, weeklyCredits - 200);
+      const weeklyCredits = activeReferrals * 250;
+      const maxPayout = Math.max(0, weeklyCredits - 500);
 
       if (amount > maxPayout) {
         return res.status(400).json({ message: `Maximum payout available is ${maxPayout} LRD` });

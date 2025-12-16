@@ -14,10 +14,10 @@ export function ProgressTracker({
   const progress = Math.min((currentReferrals / targetReferrals) * 100, 100);
   const isComplete = currentReferrals >= targetReferrals;
   const extraReferrals = Math.max(0, currentReferrals - targetReferrals);
-  const extraEarnings = extraReferrals * 100;
+  const extraEarnings = extraReferrals * 250;
 
   const milestones = [
-    { count: 1, label: "First Referral", icon: Star, reward: "100 LRD Credit" },
+    { count: 1, label: "First Referral", icon: Star, reward: "250 LRD Credit" },
     { count: 2, label: "Free Forever!", icon: Trophy, reward: "Free Subscription" },
   ];
 

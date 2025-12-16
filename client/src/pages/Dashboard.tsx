@@ -113,7 +113,7 @@ export function Dashboard() {
       day: "numeric",
       year: "numeric",
     }),
-    earnings: ref.status === "active" ? 100 : 0,
+    earnings: ref.status === "active" ? 250 : 0,
   }));
 
   return (
@@ -161,7 +161,7 @@ export function Dashboard() {
             />
             <StatCard
               title="Subscription Status"
-              value={subscriptionFree ? "FREE" : "200 LRD"}
+              value={subscriptionFree ? "FREE" : "500 LRD"}
               subtitle={subscriptionFree ? "2+ referrals achieved" : "Invite more friends"}
               icon={subscriptionFree ? CheckCircle : CreditCard}
               variant={subscriptionFree ? "success" : "default"}

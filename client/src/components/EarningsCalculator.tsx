@@ -5,8 +5,8 @@ import { Calculator, TrendingUp, Wallet, Gift } from "lucide-react";
 
 export function EarningsCalculator() {
   const [referrals, setReferrals] = useState([5]);
-  const monthlyFee = 200; // Actually weekly fee now
-  const creditPerReferral = 100;
+  const monthlyFee = 500; // Actually weekly fee now
+  const creditPerReferral = 250;
 
   const totalCredits = referrals[0] * creditPerReferral;
   const subscriptionCovered = referrals[0] >= 2;

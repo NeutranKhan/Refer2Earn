@@ -1,122 +1,95 @@
-import { sql } from 'drizzle-orm';
-import {
-  index,
-  jsonb,
-  pgTable,
-  timestamp,
-  varchar,
-  integer,
-  boolean,
-  text,
-} from "drizzle-orm/pg-core";
-import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
-// Session storage table for Replit Auth
-export const sessions = pgTable(
-  "sessions",
-  {
-    sid: varchar("sid").primaryKey(),
-    sess: jsonb("sess").notNull(),
-    expire: timestamp("expire").notNull(),
-  },
-  (table) => [index("IDX_session_expire").on(table.expire)],
-);
-
-// Users table with Replit Auth integration
-export const users = pgTable("users", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  email: varchar("email").unique(),
-  firstName: varchar("first_name"),
-  lastName: varchar("last_name"),
-  profileImageUrl: varchar("profile_image_url"),
-  phone: varchar("phone"),
-  referralCode: varchar("referral_code").unique().notNull(),
-  referredBy: varchar("referred_by"),
-  isAdmin: boolean("is_admin").default(false),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
+export const userSchema = z.object({
+  id: z.string(),
+  email: z.string().email().nullable().optional(),
+  firstName: z.string().nullable().optional(),
+  lastName: z.string().nullable().optional(),
+  profileImageUrl: z.string().nullable().optional(),
+  phone: z.string().nullable().optional(),
+  referralCode: z.string(),
+  referredBy: z.string().nullable().optional(),
+  isAdmin: z.boolean().default(false),
+  createdAt: z.date().or(z.string()).nullable().optional(),
+  updatedAt: z.date().or(z.string()).nullable().optional(),
 });
 
-// Subscriptions table
-export const subscriptions = pgTable("subscriptions", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  userId: varchar("user_id").notNull().references(() => users.id),
-  status: varchar("status").notNull().default("pending"), // pending, active, expired, free
-  amount: integer("amount").notNull().default(1500),
-  paymentProvider: varchar("payment_provider"), // mtn, orange
-  paymentPhone: varchar("payment_phone"),
-  startDate: timestamp("start_date"),
-  endDate: timestamp("end_date"),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
+export const subscriptionSchema = z.object({
+  id: z.string(),
+  userId: z.string(),
+  status: z.string().default("pending"),
+  amount: z.number().default(500),
+  paymentProvider: z.string().nullable().optional(),
+  paymentPhone: z.string().nullable().optional(),
+  startDate: z.date().or(z.string()).nullable().optional(),
+  endDate: z.date().or(z.string()).nullable().optional(),
+  createdAt: z.date().or(z.string()).nullable().optional(),
+  updatedAt: z.date().or(z.string()).nullable().optional(),
 });
 
-// Referrals tracking table
-export const referrals = pgTable("referrals", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  referrerId: varchar("referrer_id").notNull().references(() => users.id),
-  referredUserId: varchar("referred_user_id").notNull().references(() => users.id),
-  status: varchar("status").notNull().default("pending"), // pending, active, inactive
-  creditAmount: integer("credit_amount").notNull().default(500),
-  activatedAt: timestamp("activated_at"),
-  createdAt: timestamp("created_at").defaultNow(),
+export const referralSchema = z.object({
+  id: z.string(),
+  referrerId: z.string(),
+  referredUserId: z.string(),
+  status: z.string().default("pending"),
+  creditAmount: z.number().default(250),
+  activatedAt: z.date().or(z.string()).nullable().optional(),
+  createdAt: z.date().or(z.string()).nullable().optional(),
 });
 
-// Payouts table
-export const payouts = pgTable("payouts", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  userId: varchar("user_id").notNull().references(() => users.id),
-  amount: integer("amount").notNull(),
-  status: varchar("status").notNull().default("pending"), // pending, approved, completed, failed
-  paymentProvider: varchar("payment_provider"),
-  paymentPhone: varchar("payment_phone"),
-  approvedBy: varchar("approved_by"),
-  approvedAt: timestamp("approved_at"),
-  completedAt: timestamp("completed_at"),
-  createdAt: timestamp("created_at").defaultNow(),
+export const payoutSchema = z.object({
+  id: z.string(),
+  userId: z.string(),
+  amount: z.number(),
+  status: z.string().default("pending"),
+  paymentProvider: z.string().nullable().optional(),
+  paymentPhone: z.string().nullable().optional(),
+  approvedBy: z.string().nullable().optional(),
+  approvedAt: z.date().or(z.string()).nullable().optional(),
+  completedAt: z.date().or(z.string()).nullable().optional(),
+  createdAt: z.date().or(z.string()).nullable().optional(),
 });
 
-// Transactions table for payment history
-export const transactions = pgTable("transactions", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  userId: varchar("user_id").notNull().references(() => users.id),
-  type: varchar("type").notNull(), // subscription_payment, referral_credit, payout
-  amount: integer("amount").notNull(),
-  description: text("description"),
-  referenceId: varchar("reference_id"), // links to subscription, referral, or payout id
-  createdAt: timestamp("created_at").defaultNow(),
+export const transactionSchema = z.object({
+  id: z.string(),
+  userId: z.string(),
+  type: z.string(),
+  amount: z.number(),
+  description: z.string().nullable().optional(),
+  referenceId: z.string().nullable().optional(),
+  createdAt: z.date().or(z.string()).nullable().optional(),
 });
 
-// Insert schemas
-export const insertUserSchema = createInsertSchema(users).omit({
+// Insert Schemas (omitting system fields)
+export const insertUserSchema = userSchema.omit({
   id: true,
   createdAt: true,
   updatedAt: true,
   referralCode: true,
 });
 
-export const insertSubscriptionSchema = createInsertSchema(subscriptions).omit({
+export const insertSubscriptionSchema = subscriptionSchema.omit({
   id: true,
   createdAt: true,
   updatedAt: true,
 });
 
-export const insertPayoutSchema = createInsertSchema(payouts).omit({
+export const insertPayoutSchema = payoutSchema.omit({
   id: true,
   createdAt: true,
 });
 
 // Types
-export type UpsertUser = typeof users.$inferInsert;
-export type User = typeof users.$inferSelect;
+export type User = z.infer<typeof userSchema>;
 export type InsertUser = z.infer<typeof insertUserSchema>;
+export type UpsertUser = InsertUser; // Alias to match previous usage
 
-export type Subscription = typeof subscriptions.$inferSelect;
+export type Subscription = z.infer<typeof subscriptionSchema>;
 export type InsertSubscription = z.infer<typeof insertSubscriptionSchema>;
 
-export type Referral = typeof referrals.$inferSelect;
-export type Payout = typeof payouts.$inferSelect;
+export type Referral = z.infer<typeof referralSchema>;
+export type Payout = z.infer<typeof payoutSchema>;
 export type InsertPayout = z.infer<typeof insertPayoutSchema>;
 
-export type Transaction = typeof transactions.$inferSelect;
+export type Transaction = z.infer<typeof transactionSchema>;
+

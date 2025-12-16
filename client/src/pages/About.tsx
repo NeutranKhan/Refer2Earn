@@ -158,7 +158,7 @@ export function About() {
                   2. They Subscribe
                 </h3>
                 <p className="text-muted-foreground">
-                  When someone uses your referral code to subscribe with a 200 LRD weekly payment, they become an active referral.
+                  When someone uses your referral code to subscribe with a 500 LRD weekly payment, they become an active referral.
                 </p>
               </div>
               <div>
@@ -166,7 +166,7 @@ export function About() {
                   3. Earn Credits
                 </h3>
                 <p className="text-muted-foreground">
-                  You earn 100 LRD in credits for each active referral. With 2+ active referrals, your subscription becomes completely free.
+                  You earn 250 LRD in credits for each active referral. With 2+ active referrals, your subscription becomes completely free.
                 </p>
               </div>
               <div>

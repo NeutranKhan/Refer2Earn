@@ -41,23 +41,32 @@ export function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps) {
 
     try {
       if (mode === "signup") {
+        if (!formData.referralCode) {
+          toast({
+            title: "Referral Code Required",
+            description: "You must enter a referral code to sign up.",
+            variant: "destructive",
+          });
+          setIsLoading(false);
+          return;
+        }
+
+        // Save referral code for AuthProvider to pick up
+        if (formData.referralCode) {
+          localStorage.setItem("referralCode", formData.referralCode);
+        }
+
         const userCredential = await createUserWithEmailAndPassword(auth, formData.email, formData.password);
         await updateProfile(userCredential.user, {
           displayName: formData.name,
         });
 
-        // Sync extra data to backend
-        try {
-          if (formData.phone) {
-            await apiRequest("PATCH", "/api/users/phone", { phone: formData.phone });
-          }
-          if (formData.referralCode) {
-            await apiRequest("POST", "/api/referrals/apply", { referralCode: formData.referralCode });
-          }
-        } catch (err) {
-          console.error("Failed to sync user data", err);
-          // Non-fatal? Or warn user?
-        }
+        // Phone number will be updated via profile page or subsequent sync if needed, 
+        // essentially we rely on the main user fetch to create the account.
+        // If we really need phone number on creation, we can pass it via a separate flow or 
+        // add it to localStorage to be sent with the first request too, but simpler to let user add it later
+        // OR better: send it as another query param or header?
+        // For now, let's stick to referral code. Phone can be added in profile settings.
 
         toast({
           title: "Account created!",
@@ -234,7 +243,7 @@ export function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps) {
                   exit={{ opacity: 0, height: 0 }}
                   className="space-y-2"
                 >
-                  <Label htmlFor="referralCode">Referral Code (Optional)</Label>
+                  <Label htmlFor="referralCode">Referral Code <span className="text-red-500">*</span></Label>
                   <Input
                     id="referralCode"
                     placeholder="Enter referral code"
@@ -243,6 +252,7 @@ export function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps) {
                       handleInputChange("referralCode", e.target.value.toUpperCase())
                     }
                     className="glass-strong"
+                    required
                     data-testid="input-referral-code"
                   />
                 </motion.div>
@@ -283,6 +293,6 @@ export function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps) {
           )}
         </div>
       </DialogContent>
-    </Dialog>
+    </Dialog >
   );
 }

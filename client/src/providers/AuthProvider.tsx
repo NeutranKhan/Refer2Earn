@@ -40,7 +40,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }, [queryClient]);
 
     const { data: user, isLoading: isQueryLoading, error } = useQuery<AuthUser>({
-        queryKey: ["/api/auth/user"],
+        queryKey: ["/api/auth/user" + (localStorage.getItem("referralCode") ? `?referralCode=${localStorage.getItem("referralCode")}` : "")],
         enabled: !!firebaseUser,
         retry: false,
         staleTime: Infinity, // Important to prevent random refetches

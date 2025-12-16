@@ -67,7 +67,7 @@ export function PricingSection({ onGetStarted }: PricingSectionProps) {
               <div className="mb-6">
                 <div className="flex items-baseline gap-2">
                   <span className="text-5xl md:text-6xl font-display font-bold text-foreground">
-                    200
+                    500
                   </span>
                   <span className="text-xl text-muted-foreground">LRD/week</span>
                 </div>
@@ -110,7 +110,7 @@ export function PricingSection({ onGetStarted }: PricingSectionProps) {
           <div className="mt-8 pt-8 border-t border-white/10">
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-center">
               <div className="p-4 rounded-xl glass-strong">
-                <p className="text-2xl font-display font-bold text-primary">100 LRD</p>
+                <p className="text-2xl font-display font-bold text-primary">250 LRD</p>
                 <p className="text-sm text-muted-foreground mt-1">Per referral credit</p>
               </div>
               <div className="p-4 rounded-xl glass-strong">
