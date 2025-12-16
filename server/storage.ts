@@ -7,7 +7,7 @@ import {
   type Transaction,
   type FinanceRecord,
   type InsertFinanceRecord,
-} from "../shared/schema";
+} from "../shared/schema.js";
 import { db } from "./lib/firebase.js"; // Using Firebase Admin Firestore
 
 // Helper to convert Firestore timestamp to Date and handle missing fields

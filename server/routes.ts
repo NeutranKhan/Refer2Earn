@@ -2,7 +2,7 @@ import type { Express } from "express";
 import type { Server } from "http";
 import { storage } from "./storage.js";
 import { verifyFirebaseToken, isAdmin } from "./middleware/auth.js";
-import { insertFinanceRecordSchema } from "../shared/schema";
+import { insertFinanceRecordSchema } from "../shared/schema.js";
 
 export async function registerRoutes(
   httpServer: Server,
