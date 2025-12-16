@@ -46,11 +46,28 @@ export default function TrackerPage() {
         }
     };
 
-    const { data: records, isLoading } = useQuery<FinanceRecord[]>({
+    const { data: records, isLoading, isError, error } = useQuery<FinanceRecord[]>({
         queryKey: ["/api/finance"],
     });
 
     // ... (existing mutations) ...
+
+    if (isLoading) {
+        return <div className="p-8 text-center">Loading tracker...</div>;
+    }
+
+    if (isError) {
+        return (
+            <div className="p-8 text-center text-red-500">
+                <h2 className="text-xl font-bold">Error Loading Tracker</h2>
+                <p>{error?.message}</p>
+                <p className="text-sm text-gray-500 mt-2">Please verify your Firestore Indexes in Firebase Console.</p>
+                <Button variant="outline" className="mt-4" onClick={() => window.location.reload()}>Retry</Button>
+            </div>
+        );
+    }
+
+    const filteredRecords = records?.filter(r => r.currency === activeCurrency) || [];
 
     return (
         <div className="min-h-screen bg-background flex flex-col">
