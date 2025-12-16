@@ -183,15 +183,15 @@ export function Dashboard() {
                   </p>
                 </div>
                 <div className="space-y-3">
-                  {!user?.subscription && (
+                  {(!user?.subscription || user.subscription.status !== 'active') && (
                     <Button
                       variant="outline"
-                      className="w-full justify-start"
+                      className="w-full justify-start border-primary/50 hover:bg-primary/10 hover:text-primary"
                       onClick={() => setShowPayment(true)}
                       data-testid="button-pay-subscription"
                     >
                       <CreditCard className="w-4 h-4 mr-2" />
-                      Pay Subscription
+                      Pay Subscription (500 LRD)
                     </Button>
                   )}
                   <Button

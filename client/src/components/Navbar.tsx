@@ -19,13 +19,16 @@ export function Navbar({ isLoggedIn = false, isAdmin = false, onLogin, onLogout 
   const navLinks = isLoggedIn
     ? [
       { href: "/", label: "Home" },
+      { href: "/tracker", label: "Tracker" },
       { href: "/dashboard", label: "Dashboard" },
-      { href: "/about", label: "About Us" },
+      { href: "/network", label: "Network" },
+      { href: "/about", label: "About" },
       ...(isAdmin ? [{ href: "/admin", label: "Admin" }] : []),
     ]
     : [
       { href: "/", label: "Home" },
-      { href: "/about", label: "About Us" },
+      { href: "/network", label: "Network" },
+      { href: "/about", label: "About" },
     ];
 
   const allLinks = navLinks;
@@ -38,8 +41,8 @@ export function Navbar({ isLoggedIn = false, isAdmin = false, onLogin, onLogout 
             <div className="p-2 rounded-lg gradient-neon">
               <Zap className="w-5 h-5 text-white" />
             </div>
-            <span className="font-display font-bold text-lg md:text-xl gradient-neon-text">
-              Refer2Earn
+            <span className="font-display font-bold text-2xl tracking-tight">
+              Wealth<span className="text-primary">Bridge</span>
             </span>
           </Link>
 

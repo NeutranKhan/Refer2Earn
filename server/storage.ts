@@ -5,6 +5,8 @@ import {
   type Referral,
   type Payout,
   type Transaction,
+  type FinanceRecord,
+  type InsertFinanceRecord,
 } from "@shared/schema";
 import { db } from "./lib/firebase.js"; // Using Firebase Admin Firestore
 
@@ -68,6 +70,11 @@ export interface IStorage {
 
   getTransactions(userId: string): Promise<Transaction[]>;
   createTransaction(data: Partial<Transaction> & { userId: string; type: string; amount: number }): Promise<Transaction>;
+
+  // Finance Records
+  createFinanceRecord(userId: string, record: InsertFinanceRecord): Promise<FinanceRecord>;
+  getFinanceRecords(userId: string): Promise<FinanceRecord[]>;
+  deleteFinanceRecord(id: string, userId: string): Promise<void>;
 
   getDashboardStats(): Promise<{
     totalUsers: number;
@@ -327,6 +334,57 @@ export class FirestoreStorage implements IStorage {
     const docRef = await db.collection('transactions').add(txData);
     const doc = await docRef.get();
     return convertDates({ id: doc.id, ...doc.data() }) as Transaction;
+  }
+
+  // Finance Records Implementation
+  async createFinanceRecord(userId: string, record: InsertFinanceRecord): Promise<FinanceRecord> {
+    const recordsRef = db.collection("finance_records");
+    const docRef = recordsRef.doc();
+    const now = new Date();
+
+    const newRecord: FinanceRecord = {
+      id: docRef.id,
+      userId,
+      ...record,
+      // Ensure date is stored as ISO string if it's a Date object, or kept as string
+      date: record.date instanceof Date ? record.date.toISOString() : record.date,
+      createdAt: now.toISOString(),
+    };
+
+    // Store as plain object to avoid Firestore issues with custom objects if any
+    await docRef.set(JSON.parse(JSON.stringify(newRecord)));
+    return newRecord;
+  }
+
+  async getFinanceRecords(userId: string): Promise<FinanceRecord[]> {
+    const recordsRef = db.collection("finance_records");
+    const snapshot = await recordsRef
+      .where("userId", "==", userId)
+      .orderBy("date", "desc")
+      .orderBy("createdAt", "desc")
+      .get();
+
+    if (snapshot.empty) {
+      return [];
+    }
+
+    return snapshot.docs.map(doc => convertDates({ id: doc.id, ...doc.data() }) as FinanceRecord);
+  }
+
+  async deleteFinanceRecord(id: string, userId: string): Promise<void> {
+    const docRef = db.collection("finance_records").doc(id);
+    const doc = await docRef.get();
+
+    if (!doc.exists) {
+      throw new Error("Record not found");
+    }
+
+    const data = doc.data() as FinanceRecord;
+    if (data.userId !== userId) {
+      throw new Error("Unauthorized");
+    }
+
+    await docRef.delete();
   }
 
   async getDashboardStats() {

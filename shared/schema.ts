@@ -60,6 +60,24 @@ export const transactionSchema = z.object({
   createdAt: z.date().or(z.string()).nullable().optional(),
 });
 
+export const financeRecordSchema = z.object({
+  id: z.string(),
+  userId: z.string(),
+  title: z.string(),
+  amount: z.number(),
+  currency: z.enum(["LRD", "USD"]),
+  type: z.enum(["income", "expense"]),
+  category: z.string(),
+  date: z.date().or(z.string()),
+  createdAt: z.date().or(z.string()).default(() => new Date().toISOString()),
+});
+
+export const insertFinanceRecordSchema = financeRecordSchema.omit({
+  id: true,
+  userId: true,
+  createdAt: true,
+});
+
 // Insert Schemas (omitting system fields)
 export const insertUserSchema = userSchema.omit({
   id: true,
@@ -92,4 +110,6 @@ export type Payout = z.infer<typeof payoutSchema>;
 export type InsertPayout = z.infer<typeof insertPayoutSchema>;
 
 export type Transaction = z.infer<typeof transactionSchema>;
+export type FinanceRecord = z.infer<typeof financeRecordSchema>;
+export type InsertFinanceRecord = z.infer<typeof insertFinanceRecordSchema>;
 

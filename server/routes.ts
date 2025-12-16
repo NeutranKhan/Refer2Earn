@@ -2,6 +2,7 @@ import type { Express } from "express";
 import type { Server } from "http";
 import { storage } from "./storage.js";
 import { verifyFirebaseToken, isAdmin } from "./middleware/auth.js";
+import { insertFinanceRecordSchema } from "@shared/schema";
 
 export async function registerRoutes(
   httpServer: Server,
@@ -377,6 +378,47 @@ export async function registerRoutes(
     } catch (error) {
       console.error("Error updating user admin status:", error);
       res.status(500).json({ message: "Failed to update user" });
+    }
+  });
+
+  // Finance Tracker Routes
+  app.post('/api/finance', verifyFirebaseToken, async (req: any, res) => {
+    console.log("POST /api/finance called", req.body);
+    try {
+      const userId = req.user.uid;
+      const recordData = insertFinanceRecordSchema.parse(req.body);
+      const record = await storage.createFinanceRecord(userId, recordData);
+      res.json(record);
+    } catch (error) {
+      console.error("Error creating finance record:", error);
+      res.status(400).json({ message: "Invalid record data" });
+    }
+  });
+
+  app.get('/api/finance', verifyFirebaseToken, async (req: any, res) => {
+    try {
+      const userId = req.user.uid;
+      const records = await storage.getFinanceRecords(userId);
+      res.json(records);
+    } catch (error) {
+      console.error("Error fetching finance records:", error);
+      res.status(500).json({ message: "Failed to fetch records" });
+    }
+  });
+
+  app.delete('/api/finance/:id', verifyFirebaseToken, async (req: any, res) => {
+    try {
+      const userId = req.user.uid;
+      const recordId = req.params.id;
+      await storage.deleteFinanceRecord(recordId, userId);
+      res.status(200).json({ message: "Record deleted" });
+    } catch (error: any) {
+      console.error("Error deleting finance record:", error);
+      if (error.message === "Unauthorized") {
+        res.status(403).json({ message: "Unauthorized" });
+      } else {
+        res.status(500).json({ message: "Failed to delete record" });
+      }
     }
   });
 

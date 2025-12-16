@@ -58,10 +58,10 @@ export function About() {
               Our Mission
             </h2>
             <p className="text-muted-foreground leading-relaxed mb-6">
-              Refer2Earn is Liberia's premier referral-based earning platform designed to create economic opportunities for everyone. We believe that your network is your net worth, and we've built a transparent, secure system that rewards you for connecting friends and family to quality services.
+              Refer2Earn is Liberia's premier financial empowerment platform. We combine a powerful <strong>Personal Finance Tracker</strong> to help you manage your money with a lucrative <strong>Referral Network</strong> to help you earn it.
             </p>
             <p className="text-muted-foreground leading-relaxed">
-              Our mission is simple: make it easy for Liberians to earn sustainable income through referrals, while building a vibrant community of empowered entrepreneurs.
+              Our mission is to provide Liberians with the tools they need for financial freedom—tracking every dollar earned and spent, while creating sustainable income opportunities through our community.
             </p>
           </motion.div>
 
