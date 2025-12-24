@@ -31,8 +31,6 @@ export function NetworkPage() {
     return (
         <div className="min-h-screen bg-background">
             <Navbar
-                isLoggedIn={isAuthenticated}
-                isAdmin={false}
                 onLogin={handleLogin}
                 onLogout={handleLogout}
             />

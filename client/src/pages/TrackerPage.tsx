@@ -183,7 +183,7 @@ export default function TrackerPage() {
 
     return (
         <div className="min-h-screen bg-background flex flex-col">
-            <Navbar isLoggedIn={true} onLogout={handleLogout} />
+            <Navbar onLogout={handleLogout} />
 
             <main className="flex-grow pt-20 md:pt-24 pb-12 px-4 md:px-8">
                 <div className="container mx-auto max-w-7xl animate-in fade-in duration-500">

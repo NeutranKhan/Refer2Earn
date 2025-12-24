@@ -210,12 +210,20 @@ export class FirestoreStorage implements IStorage {
   }
 
   async getAllBlogPosts(onlyPublished: boolean = false): Promise<BlogPost[]> {
-    let query = db.collection('blog_posts').orderBy('createdAt', 'desc');
+    const postsRef = db.collection('blog_posts');
+    let snapshot;
     if (onlyPublished) {
-      query = query.where('published', '==', true) as any;
+      snapshot = await postsRef.where('published', '==', true).get();
+    } else {
+      snapshot = await postsRef.get();
     }
-    const snapshot = await query.get();
-    return snapshot.docs.map(doc => convertDates({ id: doc.id, ...doc.data() }) as BlogPost);
+
+    const posts = snapshot.docs.map(doc => convertDates({ id: doc.id, ...doc.data() }) as BlogPost);
+    return posts.sort((a, b) => {
+      const dateA = safeDate(a.createdAt)?.getTime() || 0;
+      const dateB = safeDate(b.createdAt)?.getTime() || 0;
+      return dateB - dateA;
+    });
   }
 
   async createBlogPost(post: InsertBlogPost): Promise<BlogPost> {

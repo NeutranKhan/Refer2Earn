@@ -119,7 +119,7 @@ export function Dashboard() {
 
   return (
     <div className="min-h-screen bg-background">
-      <Navbar isLoggedIn={true} isAdmin={user?.isAdmin || false} onLogout={handleLogout} />
+      <Navbar onLogout={handleLogout} />
 
       <main className="pt-20 md:pt-24 pb-12">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">

@@ -8,7 +8,7 @@ export default function Terms() {
 
     return (
         <div className="min-h-screen bg-background">
-            <Navbar isLoggedIn={isAuthenticated} />
+            <Navbar />
             <main className="pt-24 pb-12">
                 <div className="container mx-auto max-w-4xl px-4">
                     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="glass-strong p-8 md:p-12 rounded-3xl">

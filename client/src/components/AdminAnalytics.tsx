@@ -26,164 +26,169 @@ interface AdminAnalyticsProps {
         activationsByDay: { date: string; count: number }[];
         referralLeaderboard: { name: string; count: number }[];
     };
+    view?: 'finance' | 'behavior' | 'all';
 }
 
 const COLORS = ['#06b6d4', '#10b981', '#f59e0b', '#ef4444'];
 
-export function AdminAnalytics({ financeData, behaviorData }: AdminAnalyticsProps) {
+export function AdminAnalytics({ financeData, behaviorData, view = 'all' }: AdminAnalyticsProps) {
     return (
         <div className="space-y-8">
             {/* Financial Overview */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <motion.div
-                    initial={{ opacity: 0, scale: 0.95 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    className="glass rounded-2xl p-6 neon-border-cyan"
-                >
-                    <h3 className="text-lg font-display font-bold text-foreground mb-6">Revenue Trend (LRD)</h3>
-                    <div className="h-[300px] w-full flex items-center justify-center">
-                        {financeData.revenueByDay.length > 0 ? (
-                            <ResponsiveContainer width="100%" height="100%">
-                                <AreaChart data={financeData.revenueByDay}>
-                                    <defs>
-                                        <linearGradient id="colorRev" x1="0" y1="0" x2="0" y2="1">
-                                            <stop offset="5%" stopColor="#06b6d4" stopOpacity={0.3} />
-                                            <stop offset="95%" stopColor="#06b6d4" stopOpacity={0} />
-                                        </linearGradient>
-                                    </defs>
-                                    <CartesianGrid strokeDasharray="3 3" stroke="#ffffff10" vertical={false} />
-                                    <XAxis
-                                        dataKey="date"
-                                        stroke="#ffffff50"
-                                        fontSize={12}
-                                        tickFormatter={(val) => new Date(val).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                                    />
-                                    <YAxis stroke="#ffffff50" fontSize={12} />
-                                    <Tooltip
-                                        contentStyle={{ backgroundColor: '#111', border: '1px solid #ffffff20', borderRadius: '12px' }}
-                                        itemStyle={{ color: '#06b6d4' }}
-                                    />
-                                    <Area type="monotone" dataKey="amount" stroke="#06b6d4" fillOpacity={1} fill="url(#colorRev)" strokeWidth={3} />
-                                </AreaChart>
-                            </ResponsiveContainer>
-                        ) : (
-                            <div className="text-center text-muted-foreground opacity-50">
-                                <AreaChart className="w-12 h-12 mx-auto mb-2" />
-                                <p>Awaiting revenue data...</p>
-                            </div>
-                        )}
-                    </div>
-                </motion.div>
+            {(view === 'finance' || view === 'all') && (
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <motion.div
+                        initial={{ opacity: 0, scale: 0.95 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        className="glass rounded-2xl p-6 neon-border-cyan"
+                    >
+                        <h3 className="text-lg font-display font-bold text-foreground mb-6">Revenue Trend (LRD)</h3>
+                        <div className="h-[300px] w-full flex items-center justify-center">
+                            {financeData.revenueByDay.length > 0 ? (
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <AreaChart data={financeData.revenueByDay}>
+                                        <defs>
+                                            <linearGradient id="colorRev" x1="0" y1="0" x2="0" y2="1">
+                                                <stop offset="5%" stopColor="#06b6d4" stopOpacity={0.3} />
+                                                <stop offset="95%" stopColor="#06b6d4" stopOpacity={0} />
+                                            </linearGradient>
+                                        </defs>
+                                        <CartesianGrid strokeDasharray="3 3" stroke="#ffffff10" vertical={false} />
+                                        <XAxis
+                                            dataKey="date"
+                                            stroke="#ffffff50"
+                                            fontSize={12}
+                                            tickFormatter={(val) => new Date(val).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                                        />
+                                        <YAxis stroke="#ffffff50" fontSize={12} />
+                                        <Tooltip
+                                            contentStyle={{ backgroundColor: '#111', border: '1px solid #ffffff20', borderRadius: '12px' }}
+                                            itemStyle={{ color: '#06b6d4' }}
+                                        />
+                                        <Area type="monotone" dataKey="amount" stroke="#06b6d4" fillOpacity={1} fill="url(#colorRev)" strokeWidth={3} />
+                                    </AreaChart>
+                                </ResponsiveContainer>
+                            ) : (
+                                <div className="text-center text-muted-foreground opacity-50">
+                                    <AreaChart className="w-12 h-12 mx-auto mb-2" />
+                                    <p>Awaiting revenue data...</p>
+                                </div>
+                            )}
+                        </div>
+                    </motion.div>
 
-                <motion.div
-                    initial={{ opacity: 0, scale: 0.95 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    className="glass rounded-2xl p-6 neon-border"
-                >
-                    <h3 className="text-lg font-display font-bold text-foreground mb-6">Subscription Distribution</h3>
-                    <div className="h-[300px] w-full flex items-center justify-center">
-                        {financeData.subscriptionBreakdown.some(s => s.value > 0) ? (
-                            <ResponsiveContainer width="100%" height="100%">
-                                <PieChart>
-                                    <Pie
-                                        data={financeData.subscriptionBreakdown}
-                                        cx="50%"
-                                        cy="50%"
-                                        innerRadius={60}
-                                        outerRadius={100}
-                                        paddingAngle={5}
-                                        dataKey="value"
-                                    >
-                                        {financeData.subscriptionBreakdown.map((_, index) => (
-                                            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                                        ))}
-                                    </Pie>
-                                    <Tooltip
-                                        contentStyle={{ backgroundColor: '#111', border: '1px solid #ffffff20', borderRadius: '12px' }}
-                                    />
-                                    <Legend />
-                                </PieChart>
-                            </ResponsiveContainer>
-                        ) : (
-                            <div className="text-center text-muted-foreground opacity-50">
-                                <PieChart className="w-12 h-12 mx-auto mb-2" />
-                                <p>No subscriptions to display</p>
-                            </div>
-                        )}
-                    </div>
-                </motion.div>
-            </div>
+                    <motion.div
+                        initial={{ opacity: 0, scale: 0.95 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        className="glass rounded-2xl p-6 neon-border"
+                    >
+                        <h3 className="text-lg font-display font-bold text-foreground mb-6">Subscription Distribution</h3>
+                        <div className="h-[300px] w-full flex items-center justify-center">
+                            {financeData.subscriptionBreakdown.some(s => s.value > 0) ? (
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <PieChart>
+                                        <Pie
+                                            data={financeData.subscriptionBreakdown}
+                                            cx="50%"
+                                            cy="50%"
+                                            innerRadius={60}
+                                            outerRadius={100}
+                                            paddingAngle={5}
+                                            dataKey="value"
+                                        >
+                                            {financeData.subscriptionBreakdown.map((_, index) => (
+                                                <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                                            ))}
+                                        </Pie>
+                                        <Tooltip
+                                            contentStyle={{ backgroundColor: '#111', border: '1px solid #ffffff20', borderRadius: '12px' }}
+                                        />
+                                        <Legend />
+                                    </PieChart>
+                                </ResponsiveContainer>
+                            ) : (
+                                <div className="text-center text-muted-foreground opacity-50">
+                                    <PieChart className="w-12 h-12 mx-auto mb-2" />
+                                    <p>No subscriptions to display</p>
+                                </div>
+                            )}
+                        </div>
+                    </motion.div>
+                </div>
+            )}
 
             {/* Behavioral Overview */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <motion.div
-                    initial={{ opacity: 0, scale: 0.95 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    className="glass rounded-2xl p-6 neon-border-cyan"
-                >
-                    <h3 className="text-lg font-display font-bold text-foreground mb-6">User Signups vs Activations</h3>
-                    <div className="h-[300px] w-full flex items-center justify-center">
-                        {behaviorData.signupsByDay.length > 0 ? (
-                            <ResponsiveContainer width="100%" height="100%">
-                                <AreaChart data={behaviorData.signupsByDay}>
-                                    <defs>
-                                        <linearGradient id="colorSign" x1="0" y1="0" x2="0" y2="1">
-                                            <stop offset="5%" stopColor="#8b5cf6" stopOpacity={0.3} />
-                                            <stop offset="95%" stopColor="#8b5cf6" stopOpacity={0} />
-                                        </linearGradient>
-                                    </defs>
-                                    <CartesianGrid strokeDasharray="3 3" stroke="#ffffff10" vertical={false} />
-                                    <XAxis
-                                        dataKey="date"
-                                        stroke="#ffffff50"
-                                        fontSize={12}
-                                        tickFormatter={(val) => new Date(val).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                                    />
-                                    <YAxis stroke="#ffffff50" fontSize={12} />
-                                    <Tooltip
-                                        contentStyle={{ backgroundColor: '#111', border: '1px solid #ffffff20', borderRadius: '12px' }}
-                                    />
-                                    <Area type="monotone" dataKey="count" stroke="#8b5cf6" fillOpacity={1} fill="url(#colorSign)" strokeWidth={3} name="Signups" />
-                                </AreaChart>
-                            </ResponsiveContainer>
-                        ) : (
-                            <div className="text-center text-muted-foreground opacity-50">
-                                <BarChart className="w-12 h-12 mx-auto mb-2" />
-                                <p>Tracking growth trends...</p>
-                            </div>
-                        )}
-                    </div>
-                </motion.div>
+            {(view === 'behavior' || view === 'all') && (
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <motion.div
+                        initial={{ opacity: 0, scale: 0.95 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        className="glass rounded-2xl p-6 neon-border-cyan"
+                    >
+                        <h3 className="text-lg font-display font-bold text-foreground mb-6">User Signups vs Activations</h3>
+                        <div className="h-[300px] w-full flex items-center justify-center">
+                            {behaviorData.signupsByDay.length > 0 ? (
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <AreaChart data={behaviorData.signupsByDay}>
+                                        <defs>
+                                            <linearGradient id="colorSign" x1="0" y1="0" x2="0" y2="1">
+                                                <stop offset="5%" stopColor="#8b5cf6" stopOpacity={0.3} />
+                                                <stop offset="95%" stopColor="#8b5cf6" stopOpacity={0} />
+                                            </linearGradient>
+                                        </defs>
+                                        <CartesianGrid strokeDasharray="3 3" stroke="#ffffff10" vertical={false} />
+                                        <XAxis
+                                            dataKey="date"
+                                            stroke="#ffffff50"
+                                            fontSize={12}
+                                            tickFormatter={(val) => new Date(val).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                                        />
+                                        <YAxis stroke="#ffffff50" fontSize={12} />
+                                        <Tooltip
+                                            contentStyle={{ backgroundColor: '#111', border: '1px solid #ffffff20', borderRadius: '12px' }}
+                                        />
+                                        <Area type="monotone" dataKey="count" stroke="#8b5cf6" fillOpacity={1} fill="url(#colorSign)" strokeWidth={3} name="Signups" />
+                                    </AreaChart>
+                                </ResponsiveContainer>
+                            ) : (
+                                <div className="text-center text-muted-foreground opacity-50">
+                                    <BarChart className="w-12 h-12 mx-auto mb-2" />
+                                    <p>Tracking growth trends...</p>
+                                </div>
+                            )}
+                        </div>
+                    </motion.div>
 
-                <motion.div
-                    initial={{ opacity: 0, scale: 0.95 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    className="glass rounded-2xl p-6 neon-border"
-                >
-                    <h3 className="text-lg font-display font-bold text-foreground mb-6">Referral Leaderboard</h3>
-                    <div className="h-[300px] w-full flex items-center justify-center">
-                        {behaviorData.referralLeaderboard.some(t => t.count > 0) ? (
-                            <ResponsiveContainer width="100%" height="100%">
-                                <BarChart layout="vertical" data={behaviorData.referralLeaderboard}>
-                                    <CartesianGrid strokeDasharray="3 3" stroke="#ffffff10" horizontal={false} />
-                                    <XAxis type="number" stroke="#ffffff50" fontSize={12} />
-                                    <YAxis dataKey="name" type="category" stroke="#ffffff50" fontSize={12} width={100} />
-                                    <Tooltip
-                                        cursor={{ fill: '#ffffff05' }}
-                                        contentStyle={{ backgroundColor: '#111', border: '1px solid #ffffff20', borderRadius: '12px' }}
-                                    />
-                                    <Bar dataKey="count" fill="#10b981" radius={[0, 4, 4, 0]} />
-                                </BarChart>
-                            </ResponsiveContainer>
-                        ) : (
-                            <div className="text-center text-muted-foreground opacity-50">
-                                <BarChart className="w-12 h-12 mx-auto mb-2" />
-                                <p>No referrals recorded yet</p>
-                            </div>
-                        )}
-                    </div>
-                </motion.div>
-            </div>
+                    <motion.div
+                        initial={{ opacity: 0, scale: 0.95 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        className="glass rounded-2xl p-6 neon-border"
+                    >
+                        <h3 className="text-lg font-display font-bold text-foreground mb-6">Referral Leaderboard</h3>
+                        <div className="h-[300px] w-full flex items-center justify-center">
+                            {behaviorData.referralLeaderboard.some(t => t.count > 0) ? (
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <BarChart layout="vertical" data={behaviorData.referralLeaderboard}>
+                                        <CartesianGrid strokeDasharray="3 3" stroke="#ffffff10" horizontal={false} />
+                                        <XAxis type="number" stroke="#ffffff50" fontSize={12} />
+                                        <YAxis dataKey="name" type="category" stroke="#ffffff50" fontSize={12} width={100} />
+                                        <Tooltip
+                                            cursor={{ fill: '#ffffff05' }}
+                                            contentStyle={{ backgroundColor: '#111', border: '1px solid #ffffff20', borderRadius: '12px' }}
+                                        />
+                                        <Bar dataKey="count" fill="#10b981" radius={[0, 4, 4, 0]} />
+                                    </BarChart>
+                                </ResponsiveContainer>
+                            ) : (
+                                <div className="text-center text-muted-foreground opacity-50">
+                                    <BarChart className="w-12 h-12 mx-auto mb-2" />
+                                    <p>No referrals recorded yet</p>
+                                </div>
+                            )}
+                        </div>
+                    </motion.div>
+                </div>
+            )}
         </div>
     );
 }

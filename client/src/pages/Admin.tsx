@@ -167,7 +167,7 @@ export function Admin() {
 
   return (
     <div className="min-h-screen bg-background">
-      <Navbar isLoggedIn={true} isAdmin={true} onLogout={() => auth.signOut().then(() => window.location.href = "/")} />
+      <Navbar onLogout={() => auth.signOut().then(() => window.location.href = "/")} />
 
       <main className="pt-24 pb-12">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -251,7 +251,11 @@ export function Admin() {
 
                 <TabsContent value="finance" className="space-y-8">
                   {financeAnalytics ? (
-                    <AdminAnalytics financeData={financeAnalytics} behaviorData={behaviorAnalytics || { signupsByDay: [], activationsByDay: [], referralLeaderboard: [] }} />
+                    <AdminAnalytics
+                      financeData={financeAnalytics}
+                      behaviorData={behaviorAnalytics || { signupsByDay: [], activationsByDay: [], referralLeaderboard: [] }}
+                      view="finance"
+                    />
                   ) : (
                     <div className="flex flex-col items-center justify-center p-20 opacity-50 bg-white/5 rounded-2xl border border-white/5">
                       <Loader2 className="w-8 h-8 mb-4 animate-spin text-primary" />
@@ -292,7 +296,11 @@ export function Admin() {
 
                 <TabsContent value="analytics">
                   {behaviorAnalytics ? (
-                    <AdminAnalytics financeData={financeAnalytics || { revenueByDay: [], payoutByDay: [], subscriptionBreakdown: [] }} behaviorData={behaviorAnalytics} />
+                    <AdminAnalytics
+                      financeData={financeAnalytics || { revenueByDay: [], payoutByDay: [], subscriptionBreakdown: [] }}
+                      behaviorData={behaviorAnalytics}
+                      view="behavior"
+                    />
                   ) : (
                     <div className="flex flex-col items-center justify-center p-20 opacity-50 bg-white/5 rounded-2xl border border-white/5">
                       <BarChart3 className="w-12 h-12 mb-4 animate-pulse" />

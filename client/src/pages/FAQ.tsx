@@ -12,7 +12,7 @@ export default function FAQ() {
 
     return (
         <div className="min-h-screen bg-background">
-            <Navbar isLoggedIn={isAuthenticated} onLogin={() => setShowAuthModal(true)} />
+            <Navbar onLogin={() => setShowAuthModal(true)} />
             <main className="pt-24 pb-12">
                 <div className="container mx-auto max-w-3xl px-4">
                     <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="text-center mb-12">

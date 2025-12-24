@@ -6,18 +6,20 @@ import { Link, useLocation } from "wouter";
 import { cn } from "@/lib/utils";
 import { ADMIN_PATH } from "@shared/constants";
 
+import { useAuth } from "@/providers/AuthProvider";
+
 interface NavbarProps {
-  isLoggedIn?: boolean;
-  isAdmin?: boolean;
   onLogin?: () => void;
   onLogout?: () => void;
 }
 
-export function Navbar({ isLoggedIn = false, isAdmin = false, onLogin, onLogout }: NavbarProps) {
+export function Navbar({ onLogin, onLogout }: NavbarProps) {
+  const { isAuthenticated, user } = useAuth();
+  const isAdmin = Boolean(user?.isAdmin);
   const [isOpen, setIsOpen] = useState(false);
   const [location] = useLocation();
 
-  const navLinks = isLoggedIn
+  const navLinks = isAuthenticated
     ? [
       { href: "/", label: "Home" },
       { href: "/tracker", label: "Tracker" },
@@ -72,7 +74,7 @@ export function Navbar({ isLoggedIn = false, isAdmin = false, onLogin, onLogout 
           </div>
 
           <div className="hidden md:flex items-center gap-3">
-            {isLoggedIn ? (
+            {isAuthenticated ? (
               <Button variant="outline" onClick={onLogout} data-testid="button-logout">
                 Logout
               </Button>
@@ -114,7 +116,7 @@ export function Navbar({ isLoggedIn = false, isAdmin = false, onLogin, onLogout 
                   ))}
                 </div>
                 <div className="mt-auto pb-8 flex flex-col gap-3">
-                  {isLoggedIn ? (
+                  {isAuthenticated ? (
                     <Button
                       variant="outline"
                       className="w-full"
