@@ -125,7 +125,7 @@ export function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps) {
               <Zap className="w-5 h-5 text-white" />
             </div>
             <span className="font-display font-bold text-lg gradient-neon-text">
-              Refer2Earn
+              WealthBridge
             </span>
           </div>
           <DialogTitle className="text-2xl font-display font-bold text-foreground">

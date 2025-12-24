@@ -60,7 +60,7 @@ export function PricingSection({ onGetStarted }: PricingSectionProps) {
                   <Crown className="w-6 h-6 text-white" />
                 </div>
                 <h3 className="text-2xl font-display font-bold text-foreground">
-                  Refer2Earn Pro
+                  WealthBridge Pro
                 </h3>
               </div>
 

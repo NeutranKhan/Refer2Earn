@@ -41,7 +41,7 @@ export function About() {
             className="mb-12"
           >
             <h1 className="text-4xl md:text-5xl font-display font-bold text-foreground mb-4">
-              About <span className="gradient-neon-text">Refer2Earn</span>
+              About <span className="gradient-neon-text">WealthBridge</span>
             </h1>
             <p className="text-lg text-muted-foreground">
               Empowering Liberians to build wealth through meaningful referrals
@@ -58,7 +58,7 @@ export function About() {
               Our Mission
             </h2>
             <p className="text-muted-foreground leading-relaxed mb-6">
-              Refer2Earn is Liberia's premier financial empowerment platform. We combine a powerful <strong>Personal Finance Tracker</strong> to help you manage your money with a lucrative <strong>Referral Network</strong> to help you earn it.
+              WealthBridge is Liberia's premier financial empowerment platform. We combine a powerful <strong>Personal Finance Tracker</strong> to help you manage your money with a lucrative <strong>Referral Network</strong> to help you earn it.
             </p>
             <p className="text-muted-foreground leading-relaxed">
               Our mission is to provide Liberians with the tools they need for financial freedom—tracking every dollar earned and spent, while creating sustainable income opportunities through our community.
@@ -113,7 +113,7 @@ export function About() {
                 Community Driven
               </h3>
               <p className="text-muted-foreground">
-                Join thousands of Liberians earning with Refer2Earn. Grow your network and watch your earnings compound.
+                Join thousands of Liberians earning with WealthBridge. Grow your network and watch your earnings compound.
               </p>
             </motion.div>
 

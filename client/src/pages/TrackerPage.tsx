@@ -50,7 +50,54 @@ export default function TrackerPage() {
         queryKey: ["/api/finance"],
     });
 
-    // ... (existing mutations) ...
+    const createMutation = useMutation({
+        mutationFn: async (record: InsertFinanceRecord) => {
+            const res = await apiRequest("POST", "/api/finance", record);
+            const data = await res.json();
+            if (res.status === 400 && data.message === "Invalid record data") {
+                // Handle schema validation errors locally if helpful, but server already does it
+                throw new Error("Invalid record data");
+            }
+            return data;
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ["/api/finance"] });
+            setIsAddOpen(false);
+            toast({
+                title: "Transaction added",
+                description: "Your transaction has been recorded successfully.",
+            });
+        },
+        onError: (error) => {
+            console.error(error);
+            toast({
+                title: "Error",
+                description: "Failed to add transaction. Please try again.",
+                variant: "destructive",
+            });
+        },
+    });
+
+    const deleteMutation = useMutation({
+        mutationFn: async (id: number) => {
+            await apiRequest("DELETE", `/api/finance/${id}`);
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ["/api/finance"] });
+            toast({
+                title: "Transaction deleted",
+                description: "Transaction removed successfully.",
+            });
+        },
+        onError: (error) => {
+            console.error(error);
+            toast({
+                title: "Error",
+                description: "Failed to delete transaction.",
+                variant: "destructive",
+            });
+        },
+    });
 
     if (isLoading) {
         return <div className="p-8 text-center">Loading tracker...</div>;
@@ -68,6 +115,16 @@ export default function TrackerPage() {
     }
 
     const filteredRecords = records?.filter(r => r.currency === activeCurrency) || [];
+
+    const totalIncome = filteredRecords
+        .filter(r => r.type === "income")
+        .reduce((sum, r) => sum + Number(r.amount), 0);
+
+    const totalExpense = filteredRecords
+        .filter(r => r.type === "expense")
+        .reduce((sum, r) => sum + Number(r.amount), 0);
+
+    const balance = totalIncome - totalExpense;
 
     return (
         <div className="min-h-screen bg-background flex flex-col">

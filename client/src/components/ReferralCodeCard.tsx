@@ -11,7 +11,7 @@ interface ReferralCodeCardProps {
 
 export function ReferralCodeCard({
   referralCode,
-  referralLink = `https://refer2earn.lr/join/${referralCode}`,
+  referralLink = `https://wealthbridge.lr/join/${referralCode}`,
 }: ReferralCodeCardProps) {
   const [copied, setCopied] = useState(false);
   const { toast } = useToast();
@@ -38,8 +38,8 @@ export function ReferralCodeCard({
     if (navigator.share) {
       try {
         await navigator.share({
-          title: "Join Refer2Earn Liberia",
-          text: `Use my referral code ${referralCode} to join Refer2Earn Liberia and start earning!`,
+          title: "Join WealthBridge Liberia",
+          text: `Use my referral code ${referralCode} to join WealthBridge Liberia and start earning!`,
           url: referralLink,
         });
       } catch (err) {

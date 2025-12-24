@@ -37,7 +37,7 @@ export function Footer() {
                 <Zap className="w-5 h-5 text-white" />
               </div>
               <span className="font-display font-bold text-xl gradient-neon-text">
-                Refer2Earn
+                WealthBridge
               </span>
             </Link>
             <p className="text-muted-foreground max-w-sm mb-6">
@@ -51,7 +51,7 @@ export function Footer() {
               </div>
               <div className="flex items-center gap-3 text-muted-foreground">
                 <Mail className="w-4 h-4" />
-                <span>support@refer2earn.lr</span>
+                <span>support@wealthbridge.lr</span>
               </div>
               <div className="flex items-center gap-3 text-muted-foreground">
                 <MapPin className="w-4 h-4" />
@@ -112,7 +112,7 @@ export function Footer() {
         <div className="mt-12 pt-8 border-t border-white/10">
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
             <p className="text-sm text-muted-foreground">
-              2024 Refer2Earn Liberia. All rights reserved.
+              2024 WealthBridge Liberia. All rights reserved.
             </p>
 
             <div className="flex items-center gap-4">

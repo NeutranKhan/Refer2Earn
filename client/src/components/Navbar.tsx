@@ -41,9 +41,7 @@ export function Navbar({ isLoggedIn = false, isAdmin = false, onLogin, onLogout 
             <div className="p-2 rounded-lg gradient-neon">
               <Zap className="w-5 h-5 text-white" />
             </div>
-            <span className="font-display font-bold text-2xl tracking-tight">
-              Wealth<span className="text-primary">Bridge</span>
-            </span>
+            Wealth<span className="text-primary">Bridge</span>
           </Link>
 
           <div className="hidden md:flex items-center gap-8">
