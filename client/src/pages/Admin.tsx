@@ -219,7 +219,7 @@ export function Admin() {
                     <StatCard title="Total Users" value={stats?.totalUsers || 0} icon={Users} trend={{ value: 12, positive: true }} />
                     <StatCard title="Total Revenue" value={`${(stats?.totalRevenue || 0).toLocaleString()} LRD`} icon={Wallet} variant="accent" />
                     <StatCard title="Pending Payouts" value={`${(stats?.pendingPayouts || 0).toLocaleString()} LRD`} icon={CreditCard} variant="warning" />
-                    <StatCard title="Total Network" value={stats?.totalReferrals || 0} icon={TrendingUp} variant="success" />
+                    <StatCard title="Total Referrals" value={stats?.totalReferrals || 0} icon={TrendingUp} variant="success" />
                   </div>
 
                   <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -250,7 +250,14 @@ export function Admin() {
                 </TabsContent>
 
                 <TabsContent value="finance" className="space-y-8">
-                  {financeAnalytics && <AdminAnalytics financeData={financeAnalytics} behaviorData={behaviorAnalytics} />}
+                  {financeAnalytics ? (
+                    <AdminAnalytics financeData={financeAnalytics} behaviorData={behaviorAnalytics || { signupsByDay: [], activationsByDay: [], referralLeaderboard: [] }} />
+                  ) : (
+                    <div className="flex flex-col items-center justify-center p-20 opacity-50 bg-white/5 rounded-2xl border border-white/5">
+                      <Loader2 className="w-8 h-8 mb-4 animate-spin text-primary" />
+                      <p>Loading financial insights...</p>
+                    </div>
+                  )}
 
                   <div className="glass rounded-2xl p-6 neon-border">
                     <h3 className="text-xl font-bold mb-6 flex items-center">
@@ -284,10 +291,10 @@ export function Admin() {
                 </TabsContent>
 
                 <TabsContent value="analytics">
-                  {financeAnalytics && behaviorAnalytics ? (
-                    <AdminAnalytics financeData={financeAnalytics} behaviorData={behaviorAnalytics} />
+                  {behaviorAnalytics ? (
+                    <AdminAnalytics financeData={financeAnalytics || { revenueByDay: [], payoutByDay: [], subscriptionBreakdown: [] }} behaviorData={behaviorAnalytics} />
                   ) : (
-                    <div className="flex flex-col items-center justify-center p-20 opacity-50">
+                    <div className="flex flex-col items-center justify-center p-20 opacity-50 bg-white/5 rounded-2xl border border-white/5">
                       <BarChart3 className="w-12 h-12 mb-4 animate-pulse" />
                       <p>Crunching system numbers...</p>
                     </div>

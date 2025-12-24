@@ -12,6 +12,18 @@ import {
 } from "../shared/schema.js";
 import { db } from "./lib/firebase.js"; // Using Firebase Admin Firestore
 
+// Helper to get Date from field safely
+const safeDate = (date: any): Date | null => {
+  if (!date) return null;
+  if (date instanceof Date) return date;
+  if (typeof date.toDate === 'function') return date.toDate();
+  if (typeof date === 'string') {
+    const parsed = new Date(date);
+    return isNaN(parsed.getTime()) ? null : parsed;
+  }
+  return null;
+};
+
 // Helper to convert Firestore timestamp to Date and handle missing fields
 const convertDates = (data: any): any => {
   if (!data) return data;
@@ -23,13 +35,8 @@ const convertDates = (data: any): any => {
   ];
 
   for (const field of dateFields) {
-    if (result[field] && typeof result[field].toDate === 'function') {
-      result[field] = result[field].toDate();
-    } else if (result[field] && typeof result[field] === 'string') {
-      // already string or ISO? keep or parse if needed. 
-      // Firestore usually returns Timestamp objects.
-      result[field] = new Date(result[field]);
-    }
+    const d = safeDate(result[field]);
+    if (d) result[field] = d;
   }
   return result;
 };
@@ -173,10 +180,14 @@ export class FirestoreStorage implements IStorage {
   }
 
   async getAllUsers(): Promise<User[]> {
-    const snapshot = await db.collection('users')
-      .orderBy('createdAt', 'desc')
-      .get();
-    return snapshot.docs.map(doc => convertDates({ id: doc.id, ...doc.data() }) as User);
+    const snapshot = await db.collection('users').get();
+    const users = snapshot.docs.map(doc => convertDates({ id: doc.id, ...doc.data() }) as User);
+    // Sort in memory to avoid issues with missing fields in Firestore index
+    return users.sort((a, b) => {
+      const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+      const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+      return dateB - dateA;
+    });
   }
 
   async updateUserStatus(userId: string, status: "active" | "blocked" | "restricted"): Promise<User> {
@@ -475,7 +486,7 @@ export class FirestoreStorage implements IStorage {
         activeUsers++;
       }
       if (data.status === 'active') {
-        totalRevenue += 1500; // Assumption based on existing logic
+        totalRevenue += (data.amount || 500);
       }
     });
 
@@ -485,14 +496,14 @@ export class FirestoreStorage implements IStorage {
       pendingPayouts += doc.data().amount || 0;
     });
 
-    const referralSnapshot = await db.collection('referrals').count().get();
+    const referralSnapshot = await db.collection('referrals').get(); // Get all to count properly
 
     return {
       totalUsers,
       activeUsers,
       totalRevenue,
       pendingPayouts,
-      totalReferrals: referralSnapshot.data().count,
+      totalReferrals: referralSnapshot.size,
     };
   }
 
@@ -505,15 +516,21 @@ export class FirestoreStorage implements IStorage {
     const revenueByDay: Record<string, number> = {};
     subs.forEach(doc => {
       const data = doc.data();
-      const date = new Date(data.createdAt.toDate()).toISOString().split('T')[0];
-      revenueByDay[date] = (revenueByDay[date] || 0) + 500;
+      const d = safeDate(data.createdAt);
+      if (data.status === 'active' && d) {
+        const date = d.toISOString().split('T')[0];
+        revenueByDay[date] = (revenueByDay[date] || 0) + (data.amount || 500);
+      }
     });
 
     const payoutByDay: Record<string, number> = {};
     payouts.forEach(doc => {
       const data = doc.data();
-      const date = new Date(data.completedAt.toDate()).toISOString().split('T')[0];
-      payoutByDay[date] = (payoutByDay[date] || 0) + (data.amount || 0);
+      const d = safeDate(data.completedAt);
+      if (d) {
+        const date = d.toISOString().split('T')[0];
+        payoutByDay[date] = (payoutByDay[date] || 0) + (data.amount || 0);
+      }
     });
 
     return {
@@ -534,15 +551,19 @@ export class FirestoreStorage implements IStorage {
     const signupsByDay: Record<string, number> = {};
     users.forEach(doc => {
       const data = doc.data();
-      const date = new Date(data.createdAt.toDate()).toISOString().split('T')[0];
-      signupsByDay[date] = (signupsByDay[date] || 0) + 1;
+      const d = safeDate(data.createdAt);
+      if (d) {
+        const date = d.toISOString().split('T')[0];
+        signupsByDay[date] = (signupsByDay[date] || 0) + 1;
+      }
     });
 
     const activationsByDay: Record<string, number> = {};
     referrals.forEach(doc => {
       const data = doc.data();
-      if (data.status === 'active' && data.activatedAt) {
-        const date = new Date(data.activatedAt.toDate()).toISOString().split('T')[0];
+      const d = safeDate(data.activatedAt);
+      if (data.status === 'active' && d) {
+        const date = d.toISOString().split('T')[0];
         activationsByDay[date] = (activationsByDay[date] || 0) + 1;
       }
     });

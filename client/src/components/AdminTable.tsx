@@ -249,6 +249,11 @@ export function AdminTable({ users, onApprove, onBlock, onDelete }: AdminTablePr
             })}
           </tbody>
         </table>
+        {paginatedUsers.length === 0 && (
+          <div className="text-center py-12 bg-white/5 rounded-xl border border-dashed border-white/10 mt-4">
+            <p className="text-muted-foreground italic">No users found matching your criteria.</p>
+          </div>
+        )}
       </div>
 
       {totalPages > 1 && (

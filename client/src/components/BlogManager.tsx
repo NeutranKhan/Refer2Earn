@@ -170,7 +170,7 @@ export function BlogManager() {
                         </div>
 
                         <div className="flex items-center gap-2">
-                            <input type="checkbox" name="published" defaultChecked={editingPost?.published} id="published-check" />
+                            <input type="checkbox" name="published" defaultChecked={editingPost ? editingPost.published : true} id="published-check" />
                             <label htmlFor="published-check" className="text-sm font-medium text-foreground">Publish immediately</label>
                         </div>
 
