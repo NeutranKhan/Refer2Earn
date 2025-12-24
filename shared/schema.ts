@@ -10,6 +10,7 @@ export const userSchema = z.object({
   referralCode: z.string(),
   referredBy: z.string().nullable().optional(),
   isAdmin: z.boolean().default(false),
+  status: z.enum(["active", "blocked", "restricted"]).default("active"),
   createdAt: z.date().or(z.string()).nullable().optional(),
   updatedAt: z.date().or(z.string()).nullable().optional(),
 });
@@ -58,6 +59,25 @@ export const transactionSchema = z.object({
   description: z.string().nullable().optional(),
   referenceId: z.string().nullable().optional(),
   createdAt: z.date().or(z.string()).nullable().optional(),
+});
+
+export const blogPostSchema = z.object({
+  id: z.string(),
+  title: z.string().min(1, "Title is required"),
+  content: z.string().min(1, "Content is required"),
+  excerpt: z.string().nullable().optional(),
+  author: z.string(),
+  coverImage: z.string().nullable().optional(),
+  tags: z.array(z.string()).default([]),
+  published: z.boolean().default(false),
+  createdAt: z.date().or(z.string()).default(() => new Date().toISOString()),
+  updatedAt: z.date().or(z.string()).default(() => new Date().toISOString()),
+});
+
+export const insertBlogPostSchema = blogPostSchema.omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
 });
 
 export const financeRecordSchema = z.object({
@@ -112,4 +132,7 @@ export type InsertPayout = z.infer<typeof insertPayoutSchema>;
 export type Transaction = z.infer<typeof transactionSchema>;
 export type FinanceRecord = z.infer<typeof financeRecordSchema>;
 export type InsertFinanceRecord = z.infer<typeof insertFinanceRecordSchema>;
+
+export type BlogPost = z.infer<typeof blogPostSchema>;
+export type InsertBlogPost = z.infer<typeof insertBlogPostSchema>;
 

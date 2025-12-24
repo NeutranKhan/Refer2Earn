@@ -7,6 +7,8 @@ import {
   type Transaction,
   type FinanceRecord,
   type InsertFinanceRecord,
+  type BlogPost,
+  type InsertBlogPost,
 } from "../shared/schema.js";
 import { db } from "./lib/firebase.js"; // Using Firebase Admin Firestore
 
@@ -50,7 +52,16 @@ export interface IStorage {
   getUserByReferralCode(code: string): Promise<User | undefined>;
   getUserByPhone(phone: string): Promise<User | undefined>;
   updateUserPhone(userId: string, phone: string): Promise<User>;
+  updateUserStatus(userId: string, status: "active" | "blocked" | "restricted"): Promise<User>;
+  deleteUser(userId: string): Promise<void>;
   getAllUsers(): Promise<User[]>;
+
+  // Blog
+  getBlogPost(id: string): Promise<BlogPost | undefined>;
+  getAllBlogPosts(onlyPublished?: boolean): Promise<BlogPost[]>;
+  createBlogPost(post: InsertBlogPost): Promise<BlogPost>;
+  updateBlogPost(id: string, post: Partial<InsertBlogPost>): Promise<BlogPost>;
+  deleteBlogPost(id: string): Promise<void>;
 
   getSubscription(userId: string): Promise<Subscription | undefined>;
   createSubscription(data: Partial<Subscription> & { userId: string }): Promise<Subscription>;
@@ -82,6 +93,16 @@ export interface IStorage {
     totalRevenue: number;
     pendingPayouts: number;
     totalReferrals: number;
+  }>;
+  getAnalyticsFinance(): Promise<{
+    revenueByDay: { date: string; amount: number }[];
+    payoutByDay: { date: string; amount: number }[];
+    subscriptionBreakdown: { name: string; value: number }[];
+  }>;
+  getAnalyticsBehavior(): Promise<{
+    signupsByDay: { date: string; count: number }[];
+    activationsByDay: { date: string; count: number }[];
+    referralLeaderboard: { name: string; count: number }[];
   }>;
 }
 
@@ -156,6 +177,56 @@ export class FirestoreStorage implements IStorage {
       .orderBy('createdAt', 'desc')
       .get();
     return snapshot.docs.map(doc => convertDates({ id: doc.id, ...doc.data() }) as User);
+  }
+
+  async updateUserStatus(userId: string, status: "active" | "blocked" | "restricted"): Promise<User> {
+    const userRef = db.collection('users').doc(userId);
+    await userRef.update({ status, updatedAt: new Date() });
+    const updated = await userRef.get();
+    return convertDates({ id: updated.id, ...updated.data() }) as User;
+  }
+
+  async deleteUser(userId: string): Promise<void> {
+    // Basic deletion, complex enterprise apps might soft-delete or cascade
+    await db.collection('users').doc(userId).delete();
+  }
+
+  // Blog Implementation
+  async getBlogPost(id: string): Promise<BlogPost | undefined> {
+    const doc = await db.collection('blog_posts').doc(id).get();
+    if (!doc.exists) return undefined;
+    return convertDates({ id: doc.id, ...doc.data() }) as BlogPost;
+  }
+
+  async getAllBlogPosts(onlyPublished: boolean = false): Promise<BlogPost[]> {
+    let query = db.collection('blog_posts').orderBy('createdAt', 'desc');
+    if (onlyPublished) {
+      query = query.where('published', '==', true) as any;
+    }
+    const snapshot = await query.get();
+    return snapshot.docs.map(doc => convertDates({ id: doc.id, ...doc.data() }) as BlogPost);
+  }
+
+  async createBlogPost(post: InsertBlogPost): Promise<BlogPost> {
+    const postData = {
+      ...post,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+    const docRef = await db.collection('blog_posts').add(postData);
+    const doc = await docRef.get();
+    return convertDates({ id: doc.id, ...doc.data() }) as BlogPost;
+  }
+
+  async updateBlogPost(id: string, post: Partial<InsertBlogPost>): Promise<BlogPost> {
+    const postRef = db.collection('blog_posts').doc(id);
+    await postRef.update({ ...post, updatedAt: new Date() });
+    const updated = await postRef.get();
+    return convertDates({ id: updated.id, ...updated.data() }) as BlogPost;
+  }
+
+  async deleteBlogPost(id: string): Promise<void> {
+    await db.collection('blog_posts').doc(id).delete();
   }
 
   async getSubscription(userId: string): Promise<Subscription | undefined> {
@@ -260,7 +331,7 @@ export class FirestoreStorage implements IStorage {
 
   async getPendingPayouts(): Promise<(Payout & { user: User | null })[]> {
     const snapshot = await db.collection('payouts')
-      .where('status', '==', 'pending')
+      .where('status', 'in', ['pending', 'approved'])
       .orderBy('createdAt', 'desc')
       .get();
 
@@ -422,6 +493,71 @@ export class FirestoreStorage implements IStorage {
       totalRevenue,
       pendingPayouts,
       totalReferrals: referralSnapshot.data().count,
+    };
+  }
+
+  async getAnalyticsFinance() {
+    // In a real app, use scheduled aggregation tasks. 
+    // Here we aggregate on the fly for demonstration.
+    const subs = await db.collection('subscriptions').get();
+    const payouts = await db.collection('payouts').where('status', '==', 'completed').get();
+
+    const revenueByDay: Record<string, number> = {};
+    subs.forEach(doc => {
+      const data = doc.data();
+      const date = new Date(data.createdAt.toDate()).toISOString().split('T')[0];
+      revenueByDay[date] = (revenueByDay[date] || 0) + 500;
+    });
+
+    const payoutByDay: Record<string, number> = {};
+    payouts.forEach(doc => {
+      const data = doc.data();
+      const date = new Date(data.completedAt.toDate()).toISOString().split('T')[0];
+      payoutByDay[date] = (payoutByDay[date] || 0) + (data.amount || 0);
+    });
+
+    return {
+      revenueByDay: Object.entries(revenueByDay).map(([date, amount]) => ({ date, amount })).sort((a, b) => a.date.localeCompare(b.date)),
+      payoutByDay: Object.entries(payoutByDay).map(([date, amount]) => ({ date, amount })).sort((a, b) => a.date.localeCompare(b.date)),
+      subscriptionBreakdown: [
+        { name: 'Active', value: subs.docs.filter(d => d.data().status === 'active').length },
+        { name: 'Pending', value: subs.docs.filter(d => d.data().status === 'pending').length },
+        { name: 'Expired', value: subs.docs.filter(d => d.data().status === 'expired').length },
+      ]
+    };
+  }
+
+  async getAnalyticsBehavior() {
+    const users = await db.collection('users').get();
+    const referrals = await db.collection('referrals').get();
+
+    const signupsByDay: Record<string, number> = {};
+    users.forEach(doc => {
+      const data = doc.data();
+      const date = new Date(data.createdAt.toDate()).toISOString().split('T')[0];
+      signupsByDay[date] = (signupsByDay[date] || 0) + 1;
+    });
+
+    const activationsByDay: Record<string, number> = {};
+    referrals.forEach(doc => {
+      const data = doc.data();
+      if (data.status === 'active' && data.activatedAt) {
+        const date = new Date(data.activatedAt.toDate()).toISOString().split('T')[0];
+        activationsByDay[date] = (activationsByDay[date] || 0) + 1;
+      }
+    });
+
+    return {
+      signupsByDay: Object.entries(signupsByDay).map(([date, count]) => ({ date, count })).sort((a, b) => a.date.localeCompare(b.date)),
+      activationsByDay: Object.entries(activationsByDay).map(([date, count]) => ({ date, count })).sort((a, b) => a.date.localeCompare(b.date)),
+      referralLeaderboard: users.docs
+        .map(u => ({ name: u.data().firstName || u.data().email, id: u.id }))
+        .map(u => ({
+          name: u.name,
+          count: referrals.docs.filter(r => r.data().referrerId === u.id).length
+        }))
+        .sort((a, b) => b.count - a.count)
+        .slice(0, 5)
     };
   }
 }

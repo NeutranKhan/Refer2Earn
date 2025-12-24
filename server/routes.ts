@@ -2,7 +2,7 @@ import type { Express } from "express";
 import type { Server } from "http";
 import { storage } from "./storage.js";
 import { verifyFirebaseToken, isAdmin } from "./middleware/auth.js";
-import { insertFinanceRecordSchema } from "../shared/schema.js";
+import { insertFinanceRecordSchema, insertBlogPostSchema } from "../shared/schema.js";
 
 export async function registerRoutes(
   httpServer: Server,
@@ -134,6 +134,28 @@ export async function registerRoutes(
     } catch (error) {
       console.error("Error fetching referrals:", error);
       res.status(500).json({ message: "Failed to fetch referrals" });
+    }
+  });
+
+  // Public Blog routes
+  app.get('/api/blog', async (req, res) => {
+    try {
+      const posts = await storage.getAllBlogPosts(true);
+      res.json(posts);
+    } catch (error) {
+      console.error("Error fetching blog posts:", error);
+      res.status(500).json({ message: "Failed to fetch blog posts" });
+    }
+  });
+
+  app.get('/api/blog/:id', async (req, res) => {
+    try {
+      const post = await storage.getBlogPost(req.params.id);
+      if (!post || !post.published) return res.status(404).json({ message: "Post not found" });
+      res.json(post);
+    } catch (error) {
+      console.error("Error fetching blog post:", error);
+      res.status(500).json({ message: "Failed to fetch blog post" });
     }
   });
 
@@ -378,6 +400,85 @@ export async function registerRoutes(
     } catch (error) {
       console.error("Error updating user admin status:", error);
       res.status(500).json({ message: "Failed to update user" });
+    }
+  });
+
+  app.patch('/api/admin/users/:id/status', verifyFirebaseToken, isAdmin, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const { status } = req.body;
+      const user = await storage.updateUserStatus(id, status);
+      res.json(user);
+    } catch (error) {
+      console.error("Error updating user status:", error);
+      res.status(500).json({ message: "Failed to update status" });
+    }
+  });
+
+  app.delete('/api/admin/users/:id', verifyFirebaseToken, isAdmin, async (req: any, res) => {
+    try {
+      await storage.deleteUser(req.params.id);
+      res.json({ message: "User deleted" });
+    } catch (error) {
+      console.error("Error deleting user:", error);
+      res.status(500).json({ message: "Failed to delete user" });
+    }
+  });
+
+  // Blog Admin
+  app.get('/api/admin/blog', verifyFirebaseToken, isAdmin, async (req, res) => {
+    try {
+      const posts = await storage.getAllBlogPosts(false);
+      res.json(posts);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch blog posts" });
+    }
+  });
+
+  app.post('/api/admin/blog', verifyFirebaseToken, isAdmin, async (req: any, res) => {
+    try {
+      const postData = insertBlogPostSchema.parse(req.body);
+      const post = await storage.createBlogPost(postData);
+      res.json(post);
+    } catch (error) {
+      res.status(400).json({ message: "Invalid post data" });
+    }
+  });
+
+  app.patch('/api/admin/blog/:id', verifyFirebaseToken, isAdmin, async (req: any, res) => {
+    try {
+      const post = await storage.updateBlogPost(req.params.id, req.body);
+      res.json(post);
+    } catch (error) {
+      res.status(400).json({ message: "Failed to update post" });
+    }
+  });
+
+  app.delete('/api/admin/blog/:id', verifyFirebaseToken, isAdmin, async (req, res) => {
+    try {
+      await storage.deleteBlogPost(req.params.id);
+      res.status(200).json({ message: "Post deleted" });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to delete post" });
+    }
+  });
+
+  // Analytics
+  app.get('/api/admin/analytics/finance', verifyFirebaseToken, isAdmin, async (req, res) => {
+    try {
+      const data = await storage.getAnalyticsFinance();
+      res.json(data);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch finance analytics" });
+    }
+  });
+
+  app.get('/api/admin/analytics/behavior', verifyFirebaseToken, isAdmin, async (req, res) => {
+    try {
+      const data = await storage.getAnalyticsBehavior();
+      res.json(data);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch behavior analytics" });
     }
   });
 

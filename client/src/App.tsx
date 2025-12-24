@@ -19,6 +19,7 @@ import Blog from "@/pages/Blog";
 import NotFound from "@/pages/not-found";
 import { useAuth } from "@/providers/AuthProvider";
 import { useEffect } from "react";
+import { ADMIN_PATH } from "@shared/constants";
 
 function ScrollToTop() {
   const [location] = useLocation();
@@ -69,7 +70,7 @@ function Router() {
           )}
         </Route>
 
-        <Route path="/admin">
+        <Route path={ADMIN_PATH}>
           {isLoading ? (
             <div>Loading...</div>
           ) : isAuthenticated ? (

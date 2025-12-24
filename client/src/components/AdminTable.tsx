@@ -10,7 +10,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { motion } from "framer-motion";
-import { Search, CheckCircle, XCircle, Clock, Ban, MoreHorizontal, ChevronLeft, ChevronRight } from "lucide-react";
+import { Search, CheckCircle, XCircle, Clock, Ban, MoreHorizontal, ChevronLeft, ChevronRight, Trash2 } from "lucide-react";
 
 interface User {
   id: string;
@@ -20,6 +20,7 @@ interface User {
   referralCode: string;
   referralsCount: number;
   subscriptionStatus: "active" | "pending" | "expired" | "free";
+  status: "active" | "blocked" | "restricted";
   totalEarnings: number;
   joinedDate: string;
 }
@@ -27,10 +28,11 @@ interface User {
 interface AdminTableProps {
   users: User[];
   onApprove?: (userId: string) => void;
-  onBlock?: (userId: string) => void;
+  onBlock?: (userId: string, currentStatus: string) => void;
+  onDelete?: (userId: string) => void;
 }
 
-export function AdminTable({ users, onApprove, onBlock }: AdminTableProps) {
+export function AdminTable({ users, onApprove, onBlock, onDelete }: AdminTableProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [currentPage, setCurrentPage] = useState(1);
@@ -132,6 +134,9 @@ export function AdminTable({ users, onApprove, onBlock }: AdminTableProps) {
               <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">
                 Status
               </th>
+              <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">
+                Account
+              </th>
               <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground hidden lg:table-cell">
                 Earnings
               </th>
@@ -185,6 +190,11 @@ export function AdminTable({ users, onApprove, onBlock }: AdminTableProps) {
                       {status.label}
                     </Badge>
                   </td>
+                  <td className="py-4 px-4">
+                    <Badge variant={user.status === 'active' ? 'success' : 'destructive'} className="text-[10px] px-2 py-0">
+                      {user.status.toUpperCase()}
+                    </Badge>
+                  </td>
                   <td className="py-4 px-4 hidden lg:table-cell">
                     <span className="font-display font-bold text-green-500">
                       {user.totalEarnings.toLocaleString()} LRD
@@ -206,11 +216,24 @@ export function AdminTable({ users, onApprove, onBlock }: AdminTableProps) {
                       <Button
                         size="sm"
                         variant="ghost"
-                        onClick={() => onBlock?.(user.id)}
-                        className="text-red-500 hover:text-red-400"
+                        onClick={() => onBlock?.(user.id, user.status)}
+                        className={`${user.status === 'blocked' ? 'text-green-500 hover:text-green-400' : 'text-red-500 hover:text-red-400'}`}
                         data-testid={`button-block-${user.id}`}
                       >
-                        <Ban className="w-4 h-4" />
+                        {user.status === 'blocked' ? <CheckCircle className="w-4 h-4" /> : <Ban className="w-4 h-4" />}
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => {
+                          if (confirm('Permanently delete this user? This cannot be undone.')) {
+                            onDelete?.(user.id);
+                          }
+                        }}
+                        className="text-red-600 hover:text-red-500 hover:bg-red-500/10"
+                        data-testid={`button-delete-${user.id}`}
+                      >
+                        <Trash2 className="w-4 h-4" />
                       </Button>
                       <Button
                         size="icon"

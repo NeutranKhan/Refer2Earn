@@ -4,6 +4,7 @@ import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Menu, X, Zap } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { cn } from "@/lib/utils";
+import { ADMIN_PATH } from "@shared/constants";
 
 interface NavbarProps {
   isLoggedIn?: boolean;
@@ -25,7 +26,7 @@ export function Navbar({ isLoggedIn = false, isAdmin = false, onLogin, onLogout 
       { href: "/about", label: "About" },
       { href: "/faq", label: "FAQ" },
       { href: "/blog", label: "Blog" },
-      ...(isAdmin ? [{ href: "/admin", label: "Admin" }] : []),
+      ...(isAdmin ? [{ href: ADMIN_PATH, label: "Admin" }] : []),
     ]
     : [
       { href: "/", label: "Home" },
