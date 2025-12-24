@@ -11,7 +11,7 @@ import {
   DialogClose,
 } from "@/components/ui/dialog";
 import { motion, AnimatePresence } from "framer-motion";
-import { Zap, Mail, Lock, User, Phone, ArrowRight } from "lucide-react";
+import { Zap, Mail, Lock, User, Phone, ArrowRight, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 interface AuthModalProps {
