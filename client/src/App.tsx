@@ -1,4 +1,4 @@
-import { Switch, Route } from "wouter";
+import { Switch, Route, useLocation } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
@@ -9,53 +9,79 @@ import TrackerPage from "@/pages/TrackerPage";
 import { Dashboard } from "@/pages/Dashboard";
 import { Admin } from "@/pages/Admin";
 import { About } from "@/pages/About";
+import FAQ from "@/pages/FAQ";
+import Contact from "@/pages/Contact";
+import Privacy from "@/pages/Privacy";
+import Terms from "@/pages/Terms";
+import Refunds from "@/pages/Refunds";
+import Careers from "@/pages/Careers";
+import Blog from "@/pages/Blog";
 import NotFound from "@/pages/not-found";
 import { useAuth } from "@/providers/AuthProvider";
+import { useEffect } from "react";
+
+function ScrollToTop() {
+  const [location] = useLocation();
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [location]);
+  return null;
+}
 
 function Router() {
   const { isAuthenticated, isLoading } = useAuth();
 
   return (
-    <Switch>
-      <Route path="/" component={Landing} />
-      <Route path="/network" component={NetworkPage} />
-      <Route path="/about" component={About} />
-      <Route path="/how-it-works" component={NetworkPage} />
-      <Route path="/pricing" component={NetworkPage} />
+    <>
+      <ScrollToTop />
+      <Switch>
+        <Route path="/" component={Landing} />
+        <Route path="/network" component={NetworkPage} />
+        <Route path="/about" component={About} />
+        <Route path="/how-it-works" component={NetworkPage} />
+        <Route path="/pricing" component={NetworkPage} />
+        <Route path="/faq" component={FAQ} />
+        <Route path="/contact" component={Contact} />
+        <Route path="/privacy" component={Privacy} />
+        <Route path="/terms" component={Terms} />
+        <Route path="/refunds" component={Refunds} />
+        <Route path="/careers" component={Careers} />
+        <Route path="/blog" component={Blog} />
 
-      {/* Protected Routes */}
-      <Route path="/dashboard">
-        {isLoading ? (
-          <div>Loading...</div>
-        ) : isAuthenticated ? (
-          <Dashboard />
-        ) : (
-          <Landing />
-        )}
-      </Route>
+        {/* Protected Routes */}
+        <Route path="/dashboard">
+          {isLoading ? (
+            <div>Loading...</div>
+          ) : isAuthenticated ? (
+            <Dashboard />
+          ) : (
+            <Landing />
+          )}
+        </Route>
 
-      <Route path="/tracker">
-        {isLoading ? (
-          <div>Loading...</div>
-        ) : isAuthenticated ? (
-          <TrackerPage />
-        ) : (
-          <Landing />
-        )}
-      </Route>
+        <Route path="/tracker">
+          {isLoading ? (
+            <div>Loading...</div>
+          ) : isAuthenticated ? (
+            <TrackerPage />
+          ) : (
+            <Landing />
+          )}
+        </Route>
 
-      <Route path="/admin">
-        {isLoading ? (
-          <div>Loading...</div>
-        ) : isAuthenticated ? (
-          <Admin />
-        ) : (
-          <Landing />
-        )}
-      </Route>
+        <Route path="/admin">
+          {isLoading ? (
+            <div>Loading...</div>
+          ) : isAuthenticated ? (
+            <Admin />
+          ) : (
+            <Landing />
+          )}
+        </Route>
 
-      <Route component={NotFound} />
-    </Switch>
+        <Route component={NotFound} />
+      </Switch>
+    </>
   );
 }
 

@@ -8,7 +8,8 @@ import { ReferralList } from "@/components/ReferralList";
 import { PaymentCard } from "@/components/PaymentCard";
 import { Footer } from "@/components/Footer";
 import { motion } from "framer-motion";
-import { Users, Wallet, TrendingUp, CheckCircle, CreditCard, Loader2 } from "lucide-react";
+import { Users, Wallet, TrendingUp, CheckCircle, CreditCard, Loader2, Zap } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -127,15 +128,43 @@ export function Dashboard() {
             animate={{ opacity: 1, y: 0 }}
             className="mb-8"
           >
-            <h1 className="text-3xl md:text-4xl font-display font-bold text-foreground">
-              Welcome back,{" "}
-              <span className="gradient-neon-text">
-                {user?.firstName || user?.email?.split("@")[0] || "User"}
-              </span>
-            </h1>
-            <p className="text-muted-foreground mt-2">
-              Here's an overview of your referral performance
-            </p>
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+              <div>
+                <h1 className="text-3xl md:text-4xl font-display font-bold text-foreground">
+                  Welcome back,{" "}
+                  <span className="gradient-neon-text">
+                    {user?.firstName || user?.email?.split("@")[0] || "User"}
+                  </span>
+                </h1>
+                <p className="text-muted-foreground mt-2">
+                  Here's an overview of your referral performance
+                </p>
+              </div>
+              <div className="flex items-center gap-3">
+                {user?.subscription?.status === 'active' ? (
+                  <div className="flex items-center gap-3">
+                    <Badge variant="success" className="px-4 py-1.5 text-sm font-medium animate-pulse-subtle">
+                      <CheckCircle className="w-3.5 h-3.5 mr-1.5" />
+                      Active Subscription
+                    </Badge>
+                  </div>
+                ) : (
+                  <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
+                    <Badge variant="destructive" className="px-4 py-1.5 text-sm font-medium bg-red-500/10 text-red-400 border-red-500/20">
+                      Inactive Subscription
+                    </Badge>
+                    <Button
+                      size="sm"
+                      className="neon-glow text-xs h-9"
+                      onClick={() => setShowPayment(true)}
+                    >
+                      <Zap className="w-3.5 h-3.5 mr-1.5" />
+                      Pay Now
+                    </Button>
+                  </div>
+                )}
+              </div>
+            </div>
           </motion.div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">

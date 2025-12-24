@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -11,7 +11,7 @@ import {
   DialogClose,
 } from "@/components/ui/dialog";
 import { motion, AnimatePresence } from "framer-motion";
-import { Zap, Mail, Lock, User, Phone, ArrowRight, X } from "lucide-react";
+import { Zap, Mail, Lock, User, Phone, ArrowRight } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 interface AuthModalProps {
@@ -27,13 +27,23 @@ import { apiRequest } from "../lib/queryClient";
 export function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps) {
   const [mode, setMode] = useState<"login" | "signup">("login");
   const [isLoading, setIsLoading] = useState(false);
-  const [formData, setFormData] = useState({
+
+  const initialData = {
     name: "",
     email: "",
     phone: "",
     password: "",
     referralCode: "",
-  });
+  };
+
+  const [formData, setFormData] = useState(initialData);
+
+  useEffect(() => {
+    if (!isOpen) {
+      setFormData(initialData);
+    }
+  }, [isOpen]);
+
   const { toast } = useToast();
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -81,8 +91,12 @@ export function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps) {
         });
       }
 
+      setFormData(initialData);
       onSuccess?.();
       onClose();
+      if (window.location.pathname !== "/dashboard") {
+        window.location.href = "/dashboard";
+      }
     } catch (error: any) {
       console.error("Auth error:", error);
 
@@ -112,18 +126,19 @@ export function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps) {
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
+  const handleOpenChange = (open: boolean) => {
+    if (!open) {
+      onClose();
+    }
+  };
+
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
+    <Dialog open={isOpen} onOpenChange={handleOpenChange}>
       <DialogContent className="glass-strong border-primary/20 sm:max-w-md p-0 overflow-hidden">
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
           <div className="absolute -top-20 -right-20 w-40 h-40 bg-primary/20 rounded-full blur-3xl" />
           <div className="absolute -bottom-20 -left-20 w-40 h-40 bg-accent/20 rounded-full blur-3xl" />
         </div>
-
-        <DialogClose className="absolute right-4 top-4 z-50 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground text-foreground">
-          <X className="h-5 w-5" />
-          <span className="sr-only">Close</span>
-        </DialogClose>
 
         <DialogHeader className="p-6 pb-0 relative z-10">
           <div className="flex items-center gap-3 mb-2">

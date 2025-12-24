@@ -1,9 +1,11 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
+import { PaymentCard } from "@/components/PaymentCard";
 import { apiRequest } from "@/lib/queryClient";
 import { FinanceRecord, InsertFinanceRecord } from "@shared/schema";
+import { useAuth } from "@/providers/AuthProvider";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -48,9 +50,12 @@ export default function TrackerPage() {
     const { toast } = useToast();
     const queryClient = useQueryClient();
     const [isAddOpen, setIsAddOpen] = useState(false);
+    const [showPayment, setShowPayment] = useState(false);
     const [activeCurrency, setActiveCurrency] = useState<"LRD" | "USD">("LRD");
     const [dateRange, setDateRange] = useState<"7days" | "30days" | "all">("30days");
     const [categoryFilter, setCategoryFilter] = useState<string>("all");
+    const { user } = useAuth();
+    const isSubscribed = user?.subscription?.status === 'active';
 
     const handleLogout = async () => {
         try {
@@ -185,7 +190,7 @@ export default function TrackerPage() {
 
                     {/* Header Section */}
                     <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6 mb-8">
-                        <div>
+                        <div className="flex-1">
                             <h1 className="text-4xl font-display font-bold text-foreground">
                                 Finance Tracker
                             </h1>
@@ -385,6 +390,21 @@ export default function TrackerPage() {
                 </div>
             </main>
             <Footer />
+
+            <Dialog open={showPayment} onOpenChange={setShowPayment}>
+                <DialogContent className="glass-strong border-primary/20 sm:max-w-md p-0">
+                    <DialogHeader className="p-6 pb-0">
+                        <DialogTitle className="text-xl font-display font-bold">
+                            Pay Subscription
+                        </DialogTitle>
+                    </DialogHeader>
+                    <div className="p-6 pt-4">
+                        <PaymentCard
+                            onPaymentComplete={() => setShowPayment(false)}
+                        />
+                    </div>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }
@@ -409,15 +429,24 @@ function StatsCard({ title, amount, currency, icon: Icon, className = "" }: any)
     );
 }
 
+
 function AddTransactionDialog({ isOpen, onOpenChange, onSubmit, isPending, defaultCurrency }: any) {
-    const [formData, setFormData] = useState({
+    const initialData = {
         title: "",
         amount: "",
         currency: defaultCurrency,
-        type: "expense",
+        type: "expense" as "income" | "expense",
         category: "",
         date: new Date().toISOString().split('T')[0],
-    });
+    };
+
+    const [formData, setFormData] = useState(initialData);
+
+    useEffect(() => {
+        if (!isOpen) {
+            setFormData(initialData);
+        }
+    }, [isOpen]);
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();

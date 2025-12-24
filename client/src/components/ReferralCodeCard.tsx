@@ -11,7 +11,7 @@ interface ReferralCodeCardProps {
 
 export function ReferralCodeCard({
   referralCode,
-  referralLink = `https://wealthbridge.lr/join/${referralCode}`,
+  referralLink = `https://refer2-earn.vercel.app/join/${referralCode}`,
 }: ReferralCodeCardProps) {
   const [copied, setCopied] = useState(false);
   const { toast } = useToast();

@@ -1,5 +1,5 @@
 import { Link } from "wouter";
-import { Zap, Phone, Mail, MapPin } from "lucide-react";
+import { Zap, Phone, Mail, MapPin, Facebook, Twitter, Instagram, Linkedin } from "lucide-react";
 
 export function Footer() {
   const links = {
@@ -58,6 +58,21 @@ export function Footer() {
                 <span>Monrovia, Liberia</span>
               </div>
             </div>
+
+            <div className="flex items-center gap-4 mt-6">
+              <a href="#" className="p-2 rounded-lg glass hover:text-primary transition-colors">
+                <Facebook className="w-5 h-5" />
+              </a>
+              <a href="#" className="p-2 rounded-lg glass hover:text-primary transition-colors">
+                <Twitter className="w-5 h-5" />
+              </a>
+              <a href="#" className="p-2 rounded-lg glass hover:text-primary transition-colors">
+                <Instagram className="w-5 h-5" />
+              </a>
+              <a href="#" className="p-2 rounded-lg glass hover:text-primary transition-colors">
+                <Linkedin className="w-5 h-5" />
+              </a>
+            </div>
           </div>
 
           <div>
@@ -112,7 +127,7 @@ export function Footer() {
         <div className="mt-12 pt-8 border-t border-white/10">
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
             <p className="text-sm text-muted-foreground">
-              2024 WealthBridge Liberia. All rights reserved.
+              2026 WealthBridge Liberia. All rights reserved.
             </p>
 
             <div className="flex items-center gap-4">

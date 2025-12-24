@@ -23,12 +23,16 @@ export function Navbar({ isLoggedIn = false, isAdmin = false, onLogin, onLogout 
       { href: "/dashboard", label: "Dashboard" },
       { href: "/network", label: "Network" },
       { href: "/about", label: "About" },
+      { href: "/faq", label: "FAQ" },
+      { href: "/blog", label: "Blog" },
       ...(isAdmin ? [{ href: "/admin", label: "Admin" }] : []),
     ]
     : [
       { href: "/", label: "Home" },
       { href: "/network", label: "Network" },
       { href: "/about", label: "About" },
+      { href: "/faq", label: "FAQ" },
+      { href: "/blog", label: "Blog" },
     ];
 
   const allLinks = navLinks;
