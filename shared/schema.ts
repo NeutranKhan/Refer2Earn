@@ -136,3 +136,22 @@ export type InsertFinanceRecord = z.infer<typeof insertFinanceRecordSchema>;
 export type BlogPost = z.infer<typeof blogPostSchema>;
 export type InsertBlogPost = z.infer<typeof insertBlogPostSchema>;
 
+// Notification Schema
+export const notificationSchema = z.object({
+  id: z.string(),
+  userId: z.string().nullable().optional(), // null = broadcast to all
+  title: z.string().min(1, "Title is required"),
+  message: z.string().min(1, "Message is required"),
+  type: z.enum(["info", "success", "warning", "alert"]).default("info"),
+  read: z.boolean().default(false),
+  createdAt: z.date().or(z.string()).default(() => new Date().toISOString()),
+});
+
+export const insertNotificationSchema = notificationSchema.omit({
+  id: true,
+  read: true,
+  createdAt: true,
+});
+
+export type Notification = z.infer<typeof notificationSchema>;
+export type InsertNotification = z.infer<typeof insertNotificationSchema>;

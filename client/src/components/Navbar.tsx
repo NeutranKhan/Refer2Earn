@@ -5,6 +5,7 @@ import { Menu, X, Zap } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { cn } from "@/lib/utils";
 import { ADMIN_PATH } from "@shared/constants";
+import { NotificationDropdown } from "@/components/NotificationDropdown";
 
 import { useAuth } from "@/providers/AuthProvider";
 
@@ -75,9 +76,12 @@ export function Navbar({ onLogin, onLogout }: NavbarProps) {
 
           <div className="hidden md:flex items-center gap-3">
             {isAuthenticated ? (
-              <Button variant="outline" onClick={onLogout} data-testid="button-logout">
-                Logout
-              </Button>
+              <>
+                <NotificationDropdown />
+                <Button variant="outline" onClick={onLogout} data-testid="button-logout">
+                  Logout
+                </Button>
+              </>
             ) : (
               <>
                 <Button variant="ghost" onClick={onLogin} data-testid="button-login">

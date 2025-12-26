@@ -5,6 +5,7 @@ import { StatCard } from "@/components/StatCard";
 import { AdminTable } from "@/components/AdminTable";
 import { AdminAnalytics } from "@/components/AdminAnalytics";
 import { AdminTransactions } from "@/components/AdminTransactions";
+import { AdminNotifications } from "@/components/AdminNotifications";
 import { BlogManager } from "@/components/BlogManager";
 import { Footer } from "@/components/Footer";
 import { motion, AnimatePresence } from "framer-motion";
@@ -12,7 +13,7 @@ import {
   Users, Wallet, TrendingUp, CreditCard,
   AlertTriangle, CheckCircle, Loader2,
   BarChart3, LayoutDashboard, FileText,
-  Activity, Settings
+  Activity, Settings, Bell
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -214,6 +215,9 @@ export function Admin() {
               <TabsTrigger value="blog" className="px-6 py-2.5 rounded-lg data-[state=active]:bg-primary data-[state=active]:text-white">
                 <FileText className="w-4 h-4 mr-2" /> Content
               </TabsTrigger>
+              <TabsTrigger value="notifications" className="px-6 py-2.5 rounded-lg data-[state=active]:bg-primary data-[state=active]:text-white">
+                <Bell className="w-4 h-4 mr-2" /> Notifications
+              </TabsTrigger>
             </TabsList>
 
             <AnimatePresence mode="wait">
@@ -332,6 +336,10 @@ export function Admin() {
 
                 <TabsContent value="blog">
                   <BlogManager />
+                </TabsContent>
+
+                <TabsContent value="notifications">
+                  <AdminNotifications />
                 </TabsContent>
               </motion.div>
             </AnimatePresence>

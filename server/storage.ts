@@ -9,6 +9,8 @@ import {
   type InsertFinanceRecord,
   type BlogPost,
   type InsertBlogPost,
+  type Notification,
+  type InsertNotification,
 } from "../shared/schema.js";
 import { db } from "./lib/firebase.js"; // Using Firebase Admin Firestore
 
@@ -632,6 +634,66 @@ export class FirestoreStorage implements IStorage {
         .sort((a, b) => b.count - a.count)
         .slice(0, 5)
     };
+  }
+
+  // ===== NOTIFICATIONS =====
+  async createNotification(data: InsertNotification): Promise<Notification> {
+    const notifData = {
+      ...data,
+      read: false,
+      createdAt: new Date(),
+    };
+    const docRef = await db.collection('notifications').add(notifData);
+    const doc = await docRef.get();
+    return convertDates({ id: doc.id, ...doc.data() }) as Notification;
+  }
+
+  async broadcastNotification(data: Omit<InsertNotification, 'userId'>): Promise<number> {
+    const usersSnapshot = await db.collection('users').get();
+    const batch = db.batch();
+    let count = 0;
+
+    usersSnapshot.docs.forEach(userDoc => {
+      const notifRef = db.collection('notifications').doc();
+      batch.set(notifRef, {
+        ...data,
+        userId: userDoc.id,
+        read: false,
+        createdAt: new Date(),
+      });
+      count++;
+    });
+
+    await batch.commit();
+    return count;
+  }
+
+  async getUserNotifications(userId: string): Promise<Notification[]> {
+    // Get user-specific notifications AND broadcasts (userId is null)
+    const [userNotifs, broadcasts] = await Promise.all([
+      db.collection('notifications').where('userId', '==', userId).get(),
+      db.collection('notifications').where('userId', '==', null).get(),
+    ]);
+
+    const all = [
+      ...userNotifs.docs.map(d => convertDates({ id: d.id, ...d.data() }) as Notification),
+      ...broadcasts.docs.map(d => convertDates({ id: d.id, ...d.data() }) as Notification),
+    ];
+
+    return all.sort((a, b) => {
+      const dateA = safeDate(a.createdAt)?.getTime() || 0;
+      const dateB = safeDate(b.createdAt)?.getTime() || 0;
+      return dateB - dateA;
+    });
+  }
+
+  async markNotificationRead(notificationId: string): Promise<void> {
+    await db.collection('notifications').doc(notificationId).update({ read: true });
+  }
+
+  async getAllNotifications(): Promise<Notification[]> {
+    const snapshot = await db.collection('notifications').orderBy('createdAt', 'desc').get();
+    return snapshot.docs.map(d => convertDates({ id: d.id, ...d.data() }) as Notification);
   }
 }
 

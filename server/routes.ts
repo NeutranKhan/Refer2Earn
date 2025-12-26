@@ -697,5 +697,67 @@ export async function registerRoutes(
     }
   });
 
+  // ===== NOTIFICATION ROUTES =====
+
+  // Admin: Send notification to specific user or broadcast
+  app.post('/api/admin/notifications', verifyFirebaseToken, isAdmin, async (req: any, res) => {
+    try {
+      const { userId, title, message, type, broadcast } = req.body;
+
+      if (!title || !message) {
+        return res.status(400).json({ message: "Title and message are required" });
+      }
+
+      if (broadcast) {
+        const count = await storage.broadcastNotification({ title, message, type: type || 'info' });
+        res.json({ message: `Notification sent to ${count} users`, count });
+      } else {
+        if (!userId) {
+          return res.status(400).json({ message: "userId is required for targeted notifications" });
+        }
+        const notification = await storage.createNotification({ userId, title, message, type: type || 'info' });
+        res.json(notification);
+      }
+    } catch (error) {
+      console.error("Error sending notification:", error);
+      res.status(500).json({ message: "Failed to send notification" });
+    }
+  });
+
+  // Admin: Get all notifications (for history)
+  app.get('/api/admin/notifications', verifyFirebaseToken, isAdmin, adminCacheControl, async (req: any, res) => {
+    try {
+      const notifications = await storage.getAllNotifications();
+      res.json(notifications);
+    } catch (error) {
+      console.error("Error fetching all notifications:", error);
+      res.status(500).json({ message: "Failed to fetch notifications" });
+    }
+  });
+
+  // User: Get my notifications
+  app.get('/api/notifications', verifyFirebaseToken, async (req: any, res) => {
+    try {
+      const userId = req.user.uid;
+      const notifications = await storage.getUserNotifications(userId);
+      res.json(notifications);
+    } catch (error) {
+      console.error("Error fetching user notifications:", error);
+      res.status(500).json({ message: "Failed to fetch notifications" });
+    }
+  });
+
+  // User: Mark notification as read
+  app.patch('/api/notifications/:id/read', verifyFirebaseToken, async (req: any, res) => {
+    try {
+      const notificationId = req.params.id;
+      await storage.markNotificationRead(notificationId);
+      res.json({ message: "Notification marked as read" });
+    } catch (error) {
+      console.error("Error marking notification as read:", error);
+      res.status(500).json({ message: "Failed to mark notification as read" });
+    }
+  });
+
   return httpServer;
 }
