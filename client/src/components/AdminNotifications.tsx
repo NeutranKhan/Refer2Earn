@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -8,16 +8,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
-import { Bell, Send, Users, User, Info, AlertTriangle, CheckCircle, AlertCircle, Loader2, Clock } from "lucide-react";
-import { motion } from "framer-motion";
+import { Bell, Send, Users, User, Info, AlertTriangle, CheckCircle, AlertCircle, Loader2, Clock, Search, X, Plus } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 
 interface Notification {
     id: string;
@@ -39,8 +32,9 @@ interface AdminUser {
 export function AdminNotifications() {
     const { toast } = useToast();
     const queryClient = useQueryClient();
-    const [isBroadcast, setIsBroadcast] = useState(true);
-    const [selectedUserId, setSelectedUserId] = useState("");
+    const [isBroadcast, setIsBroadcast] = useState(false);
+    const [selectedUsers, setSelectedUsers] = useState<AdminUser[]>([]);
+    const [userSearch, setUserSearch] = useState("");
     const [title, setTitle] = useState("");
     const [message, setMessage] = useState("");
     const [type, setType] = useState<"info" | "success" | "warning" | "alert">("info");
@@ -52,6 +46,27 @@ export function AdminNotifications() {
     const { data: users } = useQuery<AdminUser[]>({
         queryKey: ["/api/admin/users"],
     });
+
+    // Filter users based on search and exclude already selected
+    const filteredUsers = useMemo(() => {
+        if (!users) return [];
+        const selectedIds = new Set(selectedUsers.map(u => u.id));
+        return users.filter(user => {
+            if (selectedIds.has(user.id)) return false;
+            const searchLower = userSearch.toLowerCase();
+            const name = `${user.firstName || ""} ${user.lastName || ""}`.toLowerCase();
+            return name.includes(searchLower) || user.email.toLowerCase().includes(searchLower);
+        });
+    }, [users, userSearch, selectedUsers]);
+
+    const addUser = (user: AdminUser) => {
+        setSelectedUsers(prev => [...prev, user]);
+        setUserSearch("");
+    };
+
+    const removeUser = (userId: string) => {
+        setSelectedUsers(prev => prev.filter(u => u.id !== userId));
+    };
 
     const sendMutation = useMutation({
         mutationFn: async (data: any) => {
@@ -67,7 +82,8 @@ export function AdminNotifications() {
             setTitle("");
             setMessage("");
             setType("info");
-            setSelectedUserId("");
+            setSelectedUsers([]);
+            setIsBroadcast(false);
         },
         onError: (error: any) => {
             toast({
@@ -78,19 +94,37 @@ export function AdminNotifications() {
         },
     });
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!title || !message) {
             toast({ title: "Missing Fields", description: "Please fill in title and message.", variant: "destructive" });
             return;
         }
-        sendMutation.mutate({
-            title,
-            message,
-            type,
-            broadcast: isBroadcast,
-            userId: isBroadcast ? null : selectedUserId,
-        });
+        if (!isBroadcast && selectedUsers.length === 0) {
+            toast({ title: "No Recipients", description: "Please select at least one user or enable broadcast.", variant: "destructive" });
+            return;
+        }
+
+        if (isBroadcast) {
+            // Single broadcast request
+            sendMutation.mutate({ title, message, type, broadcast: true });
+        } else {
+            // Send to each selected user
+            for (const user of selectedUsers) {
+                await apiRequest("POST", "/api/admin/notifications", {
+                    title, message, type, broadcast: false, userId: user.id
+                });
+            }
+            queryClient.invalidateQueries({ queryKey: ["/api/admin/notifications"] });
+            toast({
+                title: "Notifications Sent!",
+                description: `Sent to ${selectedUsers.length} user(s).`,
+            });
+            setTitle("");
+            setMessage("");
+            setType("info");
+            setSelectedUsers([]);
+        }
     };
 
     const typeConfig = {
@@ -115,36 +149,101 @@ export function AdminNotifications() {
                 </CardHeader>
                 <CardContent>
                     <form onSubmit={handleSubmit} className="space-y-6">
-                        {/* Target Toggle */}
+                        {/* Broadcast Toggle */}
                         <div className="flex items-center justify-between p-4 rounded-xl glass border border-white/5">
                             <div className="flex items-center gap-3">
-                                {isBroadcast ? <Users className="w-5 h-5 text-primary" /> : <User className="w-5 h-5 text-cyan-400" />}
+                                <Users className={`w-5 h-5 ${isBroadcast ? "text-primary" : "text-muted-foreground"}`} />
                                 <div>
-                                    <p className="font-bold">{isBroadcast ? "Broadcast to All" : "Target Specific User"}</p>
+                                    <p className="font-bold">Broadcast to All Users</p>
                                     <p className="text-xs text-muted-foreground">
-                                        {isBroadcast ? "Every user will receive this notification" : "Only the selected user will see this"}
+                                        Send this notification to every user on the platform
                                     </p>
                                 </div>
                             </div>
-                            <Switch checked={!isBroadcast} onCheckedChange={(checked) => setIsBroadcast(!checked)} />
+                            <Switch checked={isBroadcast} onCheckedChange={setIsBroadcast} />
                         </div>
 
-                        {/* User Selector (if targeted) */}
+                        {/* Multi-User Selector (if not broadcast) */}
                         {!isBroadcast && (
-                            <div className="space-y-2">
-                                <Label>Select User</Label>
-                                <Select value={selectedUserId} onValueChange={setSelectedUserId}>
-                                    <SelectTrigger className="glass">
-                                        <SelectValue placeholder="Choose a user..." />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        {users?.map((user) => (
-                                            <SelectItem key={user.id} value={user.id}>
-                                                {user.firstName || user.email} {user.lastName || ""}
-                                            </SelectItem>
+                            <div className="space-y-3">
+                                <Label className="flex items-center gap-2">
+                                    <User className="w-4 h-4" />
+                                    Select Recipients ({selectedUsers.length} selected)
+                                </Label>
+
+                                {/* Selected Users */}
+                                {selectedUsers.length > 0 && (
+                                    <div className="flex flex-wrap gap-2 p-3 rounded-xl glass border border-white/5">
+                                        <AnimatePresence>
+                                            {selectedUsers.map(user => (
+                                                <motion.div
+                                                    key={user.id}
+                                                    initial={{ opacity: 0, scale: 0.8 }}
+                                                    animate={{ opacity: 1, scale: 1 }}
+                                                    exit={{ opacity: 0, scale: 0.8 }}
+                                                >
+                                                    <Badge
+                                                        variant="secondary"
+                                                        className="pl-3 pr-1 py-1.5 flex items-center gap-1.5 bg-primary/10 text-primary border-primary/20"
+                                                    >
+                                                        <span className="truncate max-w-[150px]">
+                                                            {user.firstName || user.email}
+                                                        </span>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => removeUser(user.id)}
+                                                            className="p-0.5 rounded-full hover:bg-primary/20 transition-colors"
+                                                        >
+                                                            <X className="w-3 h-3" />
+                                                        </button>
+                                                    </Badge>
+                                                </motion.div>
+                                            ))}
+                                        </AnimatePresence>
+                                    </div>
+                                )}
+
+                                {/* Search Input */}
+                                <div className="relative">
+                                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                                    <Input
+                                        placeholder="Search users by name or email..."
+                                        value={userSearch}
+                                        onChange={(e) => setUserSearch(e.target.value)}
+                                        className="pl-10 glass"
+                                    />
+                                </div>
+
+                                {/* Search Results */}
+                                {userSearch && filteredUsers.length > 0 && (
+                                    <div className="max-h-[200px] overflow-y-auto rounded-xl glass border border-white/10 divide-y divide-white/5">
+                                        {filteredUsers.slice(0, 10).map(user => (
+                                            <button
+                                                key={user.id}
+                                                type="button"
+                                                onClick={() => addUser(user)}
+                                                className="w-full flex items-center justify-between p-3 hover:bg-white/5 transition-colors text-left"
+                                            >
+                                                <div className="flex items-center gap-3">
+                                                    <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center text-xs font-bold text-primary">
+                                                        {(user.firstName || user.email).charAt(0).toUpperCase()}
+                                                    </div>
+                                                    <div>
+                                                        <p className="text-sm font-medium">
+                                                            {user.firstName || ""} {user.lastName || ""}
+                                                        </p>
+                                                        <p className="text-xs text-muted-foreground">{user.email}</p>
+                                                    </div>
+                                                </div>
+                                                <Plus className="w-4 h-4 text-primary" />
+                                            </button>
                                         ))}
-                                    </SelectContent>
-                                </Select>
+                                    </div>
+                                )}
+
+                                {userSearch && filteredUsers.length === 0 && (
+                                    <p className="text-sm text-muted-foreground text-center py-4">No users found matching "{userSearch}"</p>
+                                )}
                             </div>
                         )}
 
@@ -196,7 +295,7 @@ export function AdminNotifications() {
                             ) : (
                                 <Send className="w-5 h-5 mr-2" />
                             )}
-                            {sendMutation.isPending ? "Sending..." : "Send Notification"}
+                            {sendMutation.isPending ? "Sending..." : isBroadcast ? "Broadcast to All" : `Send to ${selectedUsers.length} User(s)`}
                         </Button>
                     </form>
                 </CardContent>
