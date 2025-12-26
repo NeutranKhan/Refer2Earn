@@ -70,10 +70,15 @@ export function AdminNotifications() {
 
     const sendMutation = useMutation({
         mutationFn: async (data: any) => {
-            return apiRequest("POST", "/api/admin/notifications", data);
+            const res = await apiRequest("POST", "/api/admin/notifications", data);
+            // Check if response is ok before parsing
+            if (!res.ok) {
+                const text = await res.text();
+                throw new Error(text.includes('<!DOCTYPE') ? 'Server error occurred' : text);
+            }
+            return res.json();
         },
-        onSuccess: async (res) => {
-            const result = await res.json();
+        onSuccess: (result) => {
             queryClient.invalidateQueries({ queryKey: ["/api/admin/notifications"] });
             toast({
                 title: "Notification Sent!",

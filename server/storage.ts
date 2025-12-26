@@ -650,21 +650,29 @@ export class FirestoreStorage implements IStorage {
 
   async broadcastNotification(data: Omit<InsertNotification, 'userId'>): Promise<number> {
     const usersSnapshot = await db.collection('users').get();
-    const batch = db.batch();
+    const userDocs = usersSnapshot.docs;
     let count = 0;
 
-    usersSnapshot.docs.forEach(userDoc => {
-      const notifRef = db.collection('notifications').doc();
-      batch.set(notifRef, {
-        ...data,
-        userId: userDoc.id,
-        read: false,
-        createdAt: new Date(),
-      });
-      count++;
-    });
+    // Firestore batch limit is 500 operations
+    const BATCH_SIZE = 500;
+    for (let i = 0; i < userDocs.length; i += BATCH_SIZE) {
+      const batch = db.batch();
+      const chunk = userDocs.slice(i, i + BATCH_SIZE);
 
-    await batch.commit();
+      chunk.forEach(userDoc => {
+        const notifRef = db.collection('notifications').doc();
+        batch.set(notifRef, {
+          ...data,
+          userId: userDoc.id,
+          read: false,
+          createdAt: new Date(),
+        });
+        count++;
+      });
+
+      await batch.commit();
+    }
+
     return count;
   }
 
