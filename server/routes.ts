@@ -759,5 +759,17 @@ export async function registerRoutes(
     }
   });
 
+  // User: Clear all notifications
+  app.delete('/api/notifications/clear', verifyFirebaseToken, async (req: any, res) => {
+    try {
+      const userId = req.user.uid;
+      await storage.clearUserNotifications(userId);
+      res.json({ message: "All notifications cleared" });
+    } catch (error) {
+      console.error("Error clearing notifications:", error);
+      res.status(500).json({ message: "Failed to clear notifications" });
+    }
+  });
+
   return httpServer;
 }

@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
-import { Bell, Info, CheckCircle, AlertTriangle, AlertCircle, Loader2 } from "lucide-react";
+import { Bell, Info, CheckCircle, AlertTriangle, AlertCircle, Loader2, Trash2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -37,6 +37,15 @@ export function NotificationDropdown() {
         },
     });
 
+    const clearMutation = useMutation({
+        mutationFn: async () => {
+            return apiRequest("DELETE", "/api/notifications/clear", {});
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ["/api/notifications"] });
+        },
+    });
+
     const unreadCount = notifications?.filter((n) => !n.read).length || 0;
 
     const typeConfig = {
@@ -59,10 +68,26 @@ export function NotificationDropdown() {
                 </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-80 glass-strong border-white/10 p-0">
-                <div className="p-3 border-b border-white/10">
-                    <h3 className="font-display font-bold text-sm">Notifications</h3>
-                    {unreadCount > 0 && (
-                        <p className="text-[10px] text-muted-foreground">{unreadCount} unread</p>
+                <div className="p-3 border-b border-white/10 flex items-center justify-between">
+                    <div>
+                        <h3 className="font-display font-bold text-sm">Notifications</h3>
+                        {unreadCount > 0 && (
+                            <p className="text-[10px] text-muted-foreground">{unreadCount} unread</p>
+                        )}
+                    </div>
+                    {notifications && notifications.length > 0 && (
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-7 px-2 text-xs text-muted-foreground hover:text-destructive"
+                            onClick={() => clearMutation.mutate()}
+                            disabled={clearMutation.isPending}
+                        >
+                            {clearMutation.isPending ? (
+                                <Loader2 className="w-3 h-3 animate-spin" />
+                            ) : (
+                                <><Trash2 className="w-3 h-3 mr-1" /> Clear</>)}
+                        </Button>
                     )}
                 </div>
                 <div className="max-h-[350px] overflow-y-auto">

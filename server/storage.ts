@@ -703,6 +703,20 @@ export class FirestoreStorage implements IStorage {
     const snapshot = await db.collection('notifications').orderBy('createdAt', 'desc').get();
     return snapshot.docs.map(d => convertDates({ id: d.id, ...d.data() }) as Notification);
   }
+
+  async clearUserNotifications(userId: string): Promise<void> {
+    const snapshot = await db.collection('notifications').where('userId', '==', userId).get();
+
+    const BATCH_SIZE = 500;
+    const docs = snapshot.docs;
+
+    for (let i = 0; i < docs.length; i += BATCH_SIZE) {
+      const batch = db.batch();
+      const chunk = docs.slice(i, i + BATCH_SIZE);
+      chunk.forEach(doc => batch.delete(doc.ref));
+      await batch.commit();
+    }
+  }
 }
 
 export const storage = new FirestoreStorage();
