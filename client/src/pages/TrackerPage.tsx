@@ -54,8 +54,20 @@ export default function TrackerPage() {
     const [activeCurrency, setActiveCurrency] = useState<"LRD" | "USD">("LRD");
     const [dateRange, setDateRange] = useState<"7days" | "30days" | "all">("30days");
     const [categoryFilter, setCategoryFilter] = useState<string>("all");
-    const { user } = useAuth();
-    const isSubscribed = user?.subscription?.status === 'active';
+    const { user: currentUser } = useAuth();
+
+    const searchParams = new URLSearchParams(window.location.search);
+    const targetUserId = searchParams.get("userId");
+    const isViewMode = Boolean(targetUserId && currentUser?.isAdmin);
+
+    // Fetch target user info if in view mode
+    const { data: targetUser } = useQuery<any>({
+        queryKey: [`/api/admin/users/${targetUserId}/profile`],
+        enabled: isViewMode,
+    });
+
+    const displayUser = isViewMode ? targetUser : currentUser;
+    const isSubscribed = displayUser?.subscription?.status === 'active';
 
     const handleLogout = async () => {
         try {
@@ -67,7 +79,7 @@ export default function TrackerPage() {
     };
 
     const { data: records, isLoading, isError, error } = useQuery<FinanceRecord[]>({
-        queryKey: ["/api/finance"],
+        queryKey: [isViewMode ? `/api/admin/users/${targetUserId}/finance-records` : "/api/finance"],
     });
 
     const createMutation = useMutation({
@@ -195,8 +207,13 @@ export default function TrackerPage() {
                                 Finance Tracker
                             </h1>
                             <p className="text-muted-foreground mt-1">
-                                Manage your wealth with advanced analytics
+                                {isViewMode ? `Viewing perspective of ${displayUser?.firstName || 'User'}` : "Manage your wealth with advanced analytics"}
                             </p>
+                            {isViewMode && (
+                                <Badge variant="outline" className="mt-2 text-[10px] h-5 border-primary/50 text-primary bg-primary/5 font-bold uppercase tracking-widest">
+                                    Admin View Mode (Read Only)
+                                </Badge>
+                            )}
                         </div>
 
                         <div className="flex flex-wrap items-center gap-3 w-full lg:w-auto">
@@ -228,13 +245,15 @@ export default function TrackerPage() {
                                 </SelectContent>
                             </Select>
 
-                            <AddTransactionDialog
-                                isOpen={isAddOpen}
-                                onOpenChange={setIsAddOpen}
-                                onSubmit={createMutation.mutate}
-                                isPending={createMutation.isPending}
-                                defaultCurrency={activeCurrency}
-                            />
+                            {!isViewMode && (
+                                <AddTransactionDialog
+                                    isOpen={isAddOpen}
+                                    onOpenChange={setIsAddOpen}
+                                    onSubmit={createMutation.mutate}
+                                    isPending={createMutation.isPending}
+                                    defaultCurrency={activeCurrency}
+                                />
+                            )}
                         </div>
                     </div>
 
@@ -372,14 +391,16 @@ export default function TrackerPage() {
                                                     }`}>
                                                     {record.type === 'income' ? '+' : '-'} {record.amount.toLocaleString()} {record.currency}
                                                 </span>
-                                                <Button
-                                                    variant="ghost"
-                                                    size="icon"
-                                                    className="opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive"
-                                                    onClick={() => deleteMutation.mutate(record.id)}
-                                                >
-                                                    <Trash2 size={16} />
-                                                </Button>
+                                                {!isViewMode && (
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="icon"
+                                                        className="opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive"
+                                                        onClick={() => deleteMutation.mutate(record.id)}
+                                                    >
+                                                        <Trash2 size={16} />
+                                                    </Button>
+                                                )}
                                             </div>
                                         </div>
                                     ))

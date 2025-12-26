@@ -16,6 +16,7 @@ import Terms from "@/pages/Terms";
 import Refunds from "@/pages/Refunds";
 import Careers from "@/pages/Careers";
 import Blog from "@/pages/Blog";
+import PostDetail from "@/pages/PostDetail";
 import NotFound from "@/pages/not-found";
 import { useAuth } from "@/providers/AuthProvider";
 import { useEffect } from "react";
@@ -48,6 +49,7 @@ function Router() {
         <Route path="/refunds" component={Refunds} />
         <Route path="/careers" component={Careers} />
         <Route path="/blog" component={Blog} />
+        <Route path="/blog/:id" component={PostDetail} />
 
         {/* Protected Routes */}
         <Route path="/dashboard">

@@ -4,6 +4,7 @@ import { Navbar } from "@/components/Navbar";
 import { StatCard } from "@/components/StatCard";
 import { AdminTable } from "@/components/AdminTable";
 import { AdminAnalytics } from "@/components/AdminAnalytics";
+import { AdminTransactions } from "@/components/AdminTransactions";
 import { BlogManager } from "@/components/BlogManager";
 import { Footer } from "@/components/Footer";
 import { motion, AnimatePresence } from "framer-motion";
@@ -24,7 +25,9 @@ import { auth } from "@/lib/firebase";
 
 interface AdminUser extends User {
   referralsCount: number;
-  subscriptionStatus: "active" | "pending" | "expired" | "free";
+  activeReferrals: number;
+  totalReferrals: number;
+  subscriptionStatus: "active" | "pending" | "expired" | "free" | "none";
   totalEarnings: number;
 }
 
@@ -97,6 +100,7 @@ export function Admin() {
       toast({ title: "Approved", description: "Payout ready for processing." });
       queryClient.invalidateQueries({ queryKey: ["/api/admin/payouts/pending"] });
       queryClient.invalidateQueries({ queryKey: ["/api/admin/stats"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/transactions"] });
     },
   });
 
@@ -109,6 +113,7 @@ export function Admin() {
       queryClient.invalidateQueries({ queryKey: ["/api/admin/payouts/pending"] });
       queryClient.invalidateQueries({ queryKey: ["/api/admin/stats"] });
       queryClient.invalidateQueries({ queryKey: ["/api/admin/analytics/finance"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/transactions"] });
     },
   });
 
@@ -158,7 +163,9 @@ export function Admin() {
     email: u.email || "No Email",
     phone: u.phone || "N/A",
     referralCode: u.referralCode,
-    referralsCount: u.referralsCount,
+    referralsCount: u.activeReferrals || 0,
+    activeReferrals: u.activeReferrals || 0,
+    totalReferrals: u.totalReferrals || 0,
     subscriptionStatus: u.subscriptionStatus,
     status: u.status,
     totalEarnings: u.totalEarnings,
@@ -195,11 +202,14 @@ export function Admin() {
               <TabsTrigger value="users" className="px-6 py-2.5 rounded-lg data-[state=active]:bg-primary data-[state=active]:text-white">
                 <Users className="w-4 h-4 mr-2" /> User Base
               </TabsTrigger>
+              <TabsTrigger value="revenue" className="px-6 py-2.5 rounded-lg data-[state=active]:bg-primary data-[state=active]:text-white">
+                <BarChart3 className="w-4 h-4 mr-2" /> Revenue
+              </TabsTrigger>
               <TabsTrigger value="finance" className="px-6 py-2.5 rounded-lg data-[state=active]:bg-primary data-[state=active]:text-white">
-                <Wallet className="w-4 h-4 mr-2" /> Revenue
+                <Wallet className="w-4 h-4 mr-2" /> Finance Center
               </TabsTrigger>
               <TabsTrigger value="analytics" className="px-6 py-2.5 rounded-lg data-[state=active]:bg-primary data-[state=active]:text-white">
-                <BarChart3 className="w-4 h-4 mr-2" /> Insights
+                <TrendingUp className="w-4 h-4 mr-2" /> Growth
               </TabsTrigger>
               <TabsTrigger value="blog" className="px-6 py-2.5 rounded-lg data-[state=active]:bg-primary data-[state=active]:text-white">
                 <FileText className="w-4 h-4 mr-2" /> Content
@@ -225,7 +235,7 @@ export function Admin() {
                   <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                     <div className="lg:col-span-2">
                       <AdminTable
-                        users={formattedUsers.slice(0, 5)}
+                        users={formattedUsers.slice(0, 10)}
                         onApprove={(id) => approveMutation.mutate(id)}
                         onBlock={(id, status) => statusMutation.mutate({ id, status: status === 'blocked' ? 'active' : 'blocked' })}
                         onDelete={(id) => deleteUserMutation.mutate(id)}
@@ -244,12 +254,13 @@ export function Admin() {
                 <TabsContent value="users">
                   <AdminTable
                     users={formattedUsers}
+                    onApprove={(id) => approveMutation.mutate(id)}
                     onBlock={(id, status) => statusMutation.mutate({ id, status: status === 'blocked' ? 'active' : 'blocked' })}
                     onDelete={(id) => deleteUserMutation.mutate(id)}
                   />
                 </TabsContent>
 
-                <TabsContent value="finance" className="space-y-8">
+                <TabsContent value="revenue" className="space-y-8">
                   {financeAnalytics ? (
                     <AdminAnalytics
                       financeData={financeAnalytics}
@@ -259,39 +270,49 @@ export function Admin() {
                   ) : (
                     <div className="flex flex-col items-center justify-center p-20 opacity-50 bg-white/5 rounded-2xl border border-white/5">
                       <Loader2 className="w-8 h-8 mb-4 animate-spin text-primary" />
-                      <p>Loading financial insights...</p>
+                      <p>Loading revenue data...</p>
                     </div>
                   )}
+                </TabsContent>
 
-                  <div className="glass rounded-2xl p-6 neon-border">
+                <TabsContent value="finance" className="space-y-8">
+                  <div className="glass rounded-2xl p-6 neon-border-cyan">
                     <h3 className="text-xl font-bold mb-6 flex items-center">
                       <CreditCard className="w-5 h-5 mr-2 text-yellow-500" />
                       Pending Payout Requests
                     </h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                       {pendingPayouts.map(payout => (
-                        <div key={payout.id} className="p-4 rounded-xl glass-strong border border-white/5 flex justify-between items-center">
+                        <div key={payout.id} className="p-4 rounded-xl glass-strong border border-white/5 flex justify-between items-center group hover:border-primary/30 transition-all">
                           <div>
                             <p className="font-bold">{payout.user?.firstName || payout.user?.email}</p>
                             <p className="text-sm text-muted-foreground">{payout.paymentPhone} • {payout.paymentProvider}</p>
+                            <Badge variant="outline" className="mt-1 text-[10px] opacity-70">Payout ID: {payout.id.slice(-6)}</Badge>
                           </div>
                           <div className="text-right flex flex-col gap-2">
                             <p className="font-display font-bold text-green-500">{payout.amount} LRD</p>
                             {payout.status === 'pending' ? (
-                              <Button size="sm" onClick={() => approveMutation.mutate(payout.id)} disabled={approveMutation.isPending}>
+                              <Button size="sm" className="neon-glow text-[10px] h-8" onClick={() => approveMutation.mutate(payout.id)} disabled={approveMutation.isPending}>
                                 Approve
                               </Button>
                             ) : (
-                              <Button size="sm" variant="success" onClick={() => completeMutation.mutate(payout.id)} disabled={completeMutation.isPending}>
+                              <Button size="sm" variant="success" className="text-[10px] h-8" onClick={() => completeMutation.mutate(payout.id)} disabled={completeMutation.isPending}>
                                 Complete
                               </Button>
                             )}
                           </div>
                         </div>
                       ))}
-                      {pendingPayouts.length === 0 && <p className="text-muted-foreground col-span-full py-8 text-center italic">All payouts are cleared.</p>}
+                      {pendingPayouts.length === 0 && (
+                        <div className="col-span-full py-12 text-center glass rounded-xl border border-dashed border-white/10">
+                          <CheckCircle className="w-8 h-8 text-green-500 mx-auto mb-2 opacity-50" />
+                          <p className="text-muted-foreground italic">All payout requests have been cleared.</p>
+                        </div>
+                      )}
                     </div>
                   </div>
+
+                  <AdminTransactions />
                 </TabsContent>
 
                 <TabsContent value="analytics">

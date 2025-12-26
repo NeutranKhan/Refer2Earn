@@ -1,8 +1,9 @@
 import type { Express } from "express";
 import type { Server } from "http";
-import { storage } from "./storage.js";
+import { storage, safeDate, convertDates } from "./storage.js";
 import { verifyFirebaseToken, isAdmin } from "./middleware/auth.js";
-import { insertFinanceRecordSchema, insertBlogPostSchema } from "../shared/schema.js";
+import { insertFinanceRecordSchema, insertBlogPostSchema, type Transaction } from "../shared/schema.js";
+import { db } from "./lib/firebase.js";
 
 export async function registerRoutes(
   httpServer: Server,
@@ -308,13 +309,28 @@ export async function registerRoutes(
   });
 
   // Admin routes
-  app.get('/api/admin/users', verifyFirebaseToken, isAdmin, async (req: any, res) => {
+  const adminCacheControl = (req: any, res: any, next: any) => {
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    next();
+  };
+
+  app.get('/api/admin/users', verifyFirebaseToken, isAdmin, adminCacheControl, async (req: any, res) => {
     try {
-      const users = await storage.getAllUsers();
+      const [users, allReferrals] = await Promise.all([
+        storage.getAllUsers(),
+        storage.getAllReferrals()
+      ]);
+
+      if (allReferrals.length > 0) {
+        console.log(`[DEBUG] First referral referrerId: "${allReferrals[0].referrerId}" type: ${typeof allReferrals[0].referrerId}`);
+      }
 
       const usersWithStats = await Promise.all(
         users.map(async (user) => {
-          const activeReferrals = await storage.getActiveReferralCount(user.id);
+          const userReferrals = allReferrals.filter(r => String(r.referrerId) === String(user.id));
+          const activeReferrals = userReferrals.filter(r => r.status === 'active').length;
+          const totalReferrals = userReferrals.length;
+
           const subscription = await storage.getSubscription(user.id);
           const payouts = await storage.getUserPayouts(user.id);
           const totalEarnings = payouts
@@ -323,6 +339,8 @@ export async function registerRoutes(
 
           return {
             ...user,
+            activeReferrals,
+            totalReferrals,
             referralsCount: activeReferrals,
             subscriptionStatus: subscription?.status || 'none',
             totalEarnings,
@@ -330,14 +348,19 @@ export async function registerRoutes(
         })
       );
 
+      if (usersWithStats.length > 0) {
+        console.log(`[DEBUG] Sample User Keys: ${Object.keys(usersWithStats[0]).join(', ')}`);
+        console.log(`[DEBUG] Sample User Stats: Active=${usersWithStats[0].activeReferrals}, Total=${usersWithStats[0].totalReferrals}`);
+      }
+
       res.json(usersWithStats);
     } catch (error) {
-      console.error("Error fetching users:", error);
+      console.error("Error fetching admin users:", error);
       res.status(500).json({ message: "Failed to fetch users" });
     }
   });
 
-  app.get('/api/admin/stats', verifyFirebaseToken, isAdmin, async (req: any, res) => {
+  app.get('/api/admin/stats', verifyFirebaseToken, isAdmin, adminCacheControl, async (req: any, res) => {
     try {
       const stats = await storage.getDashboardStats();
       res.json(stats);
@@ -347,7 +370,7 @@ export async function registerRoutes(
     }
   });
 
-  app.get('/api/admin/payouts/pending', verifyFirebaseToken, isAdmin, async (req: any, res) => {
+  app.get('/api/admin/payouts/pending', verifyFirebaseToken, isAdmin, adminCacheControl, async (req: any, res) => {
     try {
       const payouts = await storage.getPendingPayouts();
       res.json(payouts);
@@ -425,8 +448,125 @@ export async function registerRoutes(
     }
   });
 
+  app.get('/api/admin/users/:id/referrals', verifyFirebaseToken, isAdmin, adminCacheControl, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const referrals = await storage.getReferrals(id);
+      res.json(referrals);
+    } catch (error) {
+      console.error("Error fetching admin user referrals:", error);
+      res.status(500).json({ message: "Failed to fetch referrals" });
+    }
+  });
+
+  app.get('/api/admin/users/:id/dashboard-stats', verifyFirebaseToken, isAdmin, adminCacheControl, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const [allReferrals, user] = await Promise.all([
+        storage.getAllReferrals(),
+        storage.getUser(id)
+      ]);
+
+      if (!user) return res.status(404).json({ message: "User not found" });
+
+      const userReferrals = allReferrals.filter(r => String(r.referrerId) === String(id));
+      const activeReferrals = userReferrals.filter(r => r.status === 'active').length;
+      const pendingReferrals = userReferrals.filter(r => r.status === 'pending').length;
+
+      // Logic mirrored from /api/referrals/stats
+      const weeklyCredits = activeReferrals * 250;
+      const subscriptionFree = activeReferrals >= 2;
+      const weeklyPayout = subscriptionFree ? weeklyCredits : Math.max(0, weeklyCredits - 500);
+
+      res.json({
+        totalReferrals: userReferrals.length,
+        activeReferrals,
+        pendingReferrals,
+        weeklyCredits,
+        subscriptionFree,
+        weeklyPayout
+      });
+    } catch (error) {
+      console.error("Error fetching admin dashboard stats:", error);
+      res.status(500).json({ message: "Failed to fetch dashboard stats" });
+    }
+  });
+
+  app.get('/api/admin/users/:id/finance-records', verifyFirebaseToken, isAdmin, adminCacheControl, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const records = await storage.getFinanceRecords(id);
+      res.json(records);
+    } catch (error) {
+      console.error("Error fetching admin finance records:", error);
+      res.status(500).json({ message: "Failed to fetch finance records" });
+    }
+  });
+
+  app.get('/api/admin/users/:id/transactions', verifyFirebaseToken, isAdmin, adminCacheControl, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const transactions = await storage.getTransactions(id);
+      res.json(transactions);
+    } catch (error) {
+      console.error("Error fetching admin user transactions:", error);
+      res.status(500).json({ message: "Failed to fetch transactions" });
+    }
+  });
+
+  app.post('/api/admin/users/:id/adjust-balance', verifyFirebaseToken, isAdmin, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const { amount, description, type } = req.body;
+
+      if (typeof amount !== 'number' || !type) {
+        return res.status(400).json({ message: "Invalid adjustment data" });
+      }
+
+      const transaction = await storage.createTransaction({
+        userId: id,
+        amount,
+        type, // 'credit' or 'debit' or 'adjustment'
+        description: description || `Admin adjustment: ${amount} LRD`,
+      });
+
+      res.json(transaction);
+    } catch (error) {
+      console.error("Error adjusting user balance:", error);
+      res.status(500).json({ message: "Failed to adjust balance" });
+    }
+  });
+
+  app.post('/api/admin/users/:id/subscription', verifyFirebaseToken, isAdmin, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const { status, endDate } = req.body;
+
+      const subscription = await storage.getSubscription(id);
+      let updated;
+
+      if (subscription) {
+        updated = await storage.updateSubscription(subscription.id, {
+          status,
+          endDate: endDate ? new Date(endDate) : undefined
+        });
+      } else {
+        updated = await storage.createSubscription({
+          userId: id,
+          status,
+          endDate: endDate ? new Date(endDate) : undefined
+        });
+      }
+
+      res.json(updated);
+    } catch (error) {
+      console.error("Error overriding subscription:", error);
+      res.status(500).json({ message: "Failed to override subscription" });
+    }
+  });
+
   // Blog Admin
-  app.get('/api/admin/blog', verifyFirebaseToken, isAdmin, async (req, res) => {
+  app.get('/api/admin/blog', verifyFirebaseToken, isAdmin, adminCacheControl, async (req, res) => {
     try {
       const posts = await storage.getAllBlogPosts(false);
       res.json(posts);
@@ -464,7 +604,7 @@ export async function registerRoutes(
   });
 
   // Analytics
-  app.get('/api/admin/analytics/finance', verifyFirebaseToken, isAdmin, async (req, res) => {
+  app.get('/api/admin/analytics/finance', verifyFirebaseToken, isAdmin, adminCacheControl, async (req, res) => {
     try {
       const data = await storage.getAnalyticsFinance();
       res.json(data);
@@ -473,12 +613,46 @@ export async function registerRoutes(
     }
   });
 
-  app.get('/api/admin/analytics/behavior', verifyFirebaseToken, isAdmin, async (req, res) => {
+  app.get('/api/admin/analytics/behavior', verifyFirebaseToken, isAdmin, adminCacheControl, async (req, res) => {
     try {
       const data = await storage.getAnalyticsBehavior();
       res.json(data);
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch behavior analytics" });
+    }
+  });
+
+  app.get('/api/admin/transactions', verifyFirebaseToken, isAdmin, adminCacheControl, async (req, res) => {
+    try {
+      // Get all users first to map names
+      const users = await storage.getAllUsers();
+      const userMap = Object.fromEntries(users.map(u => [u.id, u]));
+
+      // Fetch all transactions across the system
+      const snapshot = await db.collection('transactions').get();
+      const transactions = snapshot.docs
+        .map((doc: any) => {
+          const data = convertDates({ id: doc.id, ...doc.data() }) as Transaction;
+          return {
+            ...data,
+            user: userMap[data.userId] || null
+          };
+        })
+        .sort((a: any, b: any) => {
+          const dateA = safeDate(a.createdAt)?.getTime() || 0;
+          const dateB = safeDate(b.createdAt)?.getTime() || 0;
+          return dateB - dateA;
+        });
+
+      console.log(`[DEBUG] Global Transactions: Found ${transactions.length} total records.`);
+      if (transactions.length > 0) {
+        console.log(`[DEBUG] Sample Transaction: ${transactions[0].type} for user ${transactions[0].userId} (${transactions[0].user ? 'User Matched' : 'User Missing'})`);
+      }
+
+      res.json(transactions);
+    } catch (error) {
+      console.error("Error fetching all transactions:", error);
+      res.status(500).json({ message: "Failed to fetch global transactions" });
     }
   });
 

@@ -38,15 +38,28 @@ interface ReferralWithUser extends Referral {
 
 export function Dashboard() {
   const [showPayment, setShowPayment] = useState(false);
-  const { user, isLoading: userLoading } = useAuth();
+  const { user: currentUser, isLoading: authLoading } = useAuth();
   const { toast } = useToast();
 
+  const searchParams = new URLSearchParams(window.location.search);
+  const targetUserId = searchParams.get("userId");
+  const isViewMode = Boolean(targetUserId && currentUser?.isAdmin);
+
+  // Fetch target user info if in view mode
+  const { data: targetUser, isLoading: targetUserLoading } = useQuery<User>({
+    queryKey: [`/api/admin/users/${targetUserId}/profile`],
+    enabled: isViewMode,
+  });
+
+  const displayUser = isViewMode ? targetUser : currentUser;
+  const userLoading = authLoading || (isViewMode && targetUserLoading);
+
   const { data: stats, isLoading: statsLoading } = useQuery<ReferralStats>({
-    queryKey: ["/api/referrals/stats"],
+    queryKey: [isViewMode ? `/api/admin/users/${targetUserId}/dashboard-stats` : "/api/referrals/stats"],
   });
 
   const { data: referralsData, isLoading: referralsLoading } = useQuery<ReferralWithUser[]>({
-    queryKey: ["/api/referrals"],
+    queryKey: [isViewMode ? `/api/admin/users/${targetUserId}/referrals` : "/api/referrals"],
   });
   const referrals = referralsData || [];
 
@@ -131,17 +144,22 @@ export function Dashboard() {
             <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
               <div>
                 <h1 className="text-3xl md:text-4xl font-display font-bold text-foreground">
-                  Welcome back,{" "}
+                  {isViewMode ? "Viewing User:" : "Welcome back,"}{" "}
                   <span className="gradient-neon-text">
-                    {user?.firstName || user?.email?.split("@")[0] || "User"}
+                    {displayUser?.firstName || displayUser?.email?.split("@")[0] || "User"}
                   </span>
                 </h1>
                 <p className="text-muted-foreground mt-2">
-                  Here's an overview of your referral performance
+                  {isViewMode ? "Administrative oversight of referral performance" : "Here's an overview of your referral performance"}
                 </p>
               </div>
               <div className="flex items-center gap-3">
-                {user?.subscription?.status === 'active' ? (
+                {isViewMode && (
+                  <Badge variant="outline" className="px-4 py-1.5 border-primary/50 text-primary bg-primary/5 font-bold">
+                    ADMIN VIEW MODE
+                  </Badge>
+                )}
+                {displayUser?.subscription?.status === 'active' ? (
                   <div className="flex items-center gap-3">
                     <Badge variant="success" className="px-4 py-1.5 text-sm font-medium animate-pulse-subtle">
                       <CheckCircle className="w-3.5 h-3.5 mr-1.5" />
@@ -153,14 +171,16 @@ export function Dashboard() {
                     <Badge variant="destructive" className="px-4 py-1.5 text-sm font-medium bg-red-500/10 text-red-400 border-red-500/20">
                       Inactive Subscription
                     </Badge>
-                    <Button
-                      size="sm"
-                      className="neon-glow text-xs h-9"
-                      onClick={() => setShowPayment(true)}
-                    >
-                      <Zap className="w-3.5 h-3.5 mr-1.5" />
-                      Pay Now
-                    </Button>
+                    {!isViewMode && (
+                      <Button
+                        size="sm"
+                        className="neon-glow text-xs h-9"
+                        onClick={() => setShowPayment(true)}
+                      >
+                        <Zap className="w-3.5 h-3.5 mr-1.5" />
+                        Pay Now
+                      </Button>
+                    )}
                   </div>
                 )}
               </div>
@@ -212,7 +232,7 @@ export function Dashboard() {
                   </p>
                 </div>
                 <div className="space-y-3">
-                  {(!user?.subscription || user.subscription.status !== 'active') && (
+                  {!isViewMode && (!displayUser?.subscription || displayUser.subscription.status !== 'active') && (
                     <Button
                       variant="outline"
                       className="w-full justify-start border-primary/50 hover:bg-primary/10 hover:text-primary"
@@ -223,30 +243,37 @@ export function Dashboard() {
                       Pay Subscription (500 LRD)
                     </Button>
                   )}
-                  <Button
-                    className="w-full justify-start neon-glow"
-                    onClick={() => {
-                      if (user?.referralCode) {
-                        navigator.clipboard.writeText(user.referralCode);
-                        toast({
-                          title: "Copied!",
-                          description: "Referral code copied to clipboard",
-                        });
-                      }
-                    }}
-                    data-testid="button-invite-friends"
-                  >
-                    <Users className="w-4 h-4 mr-2" />
-                    Invite More Friends
-                  </Button>
+                  {!isViewMode && (
+                    <Button
+                      className="w-full justify-start neon-glow"
+                      onClick={() => {
+                        if (displayUser?.referralCode) {
+                          navigator.clipboard.writeText(displayUser.referralCode);
+                          toast({
+                            title: "Copied!",
+                            description: "Referral code copied to clipboard",
+                          });
+                        }
+                      }}
+                      data-testid="button-invite-friends"
+                    >
+                      <Users className="w-4 h-4 mr-2" />
+                      Invite More Friends
+                    </Button>
+                  )}
+                  {isViewMode && (
+                    <p className="text-sm text-center italic text-muted-foreground py-4 border border-dashed border-white/10 rounded-xl">
+                      Action buttons are disabled in View Mode.
+                    </p>
+                  )}
                 </div>
               </div>
             </div>
           </div>
 
-          {user?.referralCode && (
+          {displayUser?.referralCode && (
             <div className="mb-8">
-              <ReferralCodeCard referralCode={user.referralCode} />
+              <ReferralCodeCard referralCode={displayUser.referralCode} />
             </div>
           )}
 

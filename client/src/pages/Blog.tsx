@@ -4,6 +4,7 @@ import { motion } from "framer-motion";
 import { Calendar, User, ArrowRight, Loader2, BookOpen } from "lucide-react";
 import { useAuth } from "@/providers/AuthProvider";
 import { useQuery } from "@tanstack/react-query";
+import { Link } from "wouter";
 import type { BlogPost } from "@shared/schema";
 
 export default function Blog() {
@@ -30,37 +31,38 @@ export default function Blog() {
                     ) : (
                         <div className="grid md:grid-cols-3 gap-8">
                             {posts?.map((post, i) => (
-                                <motion.article
-                                    key={post.id}
-                                    initial={{ opacity: 0, y: 20 }}
-                                    animate={{ opacity: 1, y: 0 }}
-                                    transition={{ delay: i * 0.1 }}
-                                    className="glass rounded-3xl overflow-hidden group hover:neon-border transition-all cursor-pointer flex flex-col"
-                                >
-                                    <div className="h-48 overflow-hidden relative">
-                                        {post.coverImage ? (
-                                            <img src={post.coverImage} alt={post.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
-                                        ) : (
-                                            <div className="w-full h-full bg-gradient-to-br from-primary/20 to-accent/20 flex items-center justify-center">
-                                                <BookOpen className="w-12 h-12 text-primary/40" />
+                                <Link key={post.id} href={`/blog/${post.id}`}>
+                                    <motion.article
+                                        initial={{ opacity: 0, y: 20 }}
+                                        animate={{ opacity: 1, y: 0 }}
+                                        transition={{ delay: i * 0.1 }}
+                                        className="glass rounded-3xl overflow-hidden group hover:neon-border transition-all cursor-pointer flex flex-col h-full"
+                                    >
+                                        <div className="h-48 overflow-hidden relative">
+                                            {post.coverImage ? (
+                                                <img src={post.coverImage} alt={post.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                                            ) : (
+                                                <div className="w-full h-full bg-gradient-to-br from-primary/20 to-accent/20 flex items-center justify-center">
+                                                    <BookOpen className="w-12 h-12 text-primary/40" />
+                                                </div>
+                                            )}
+                                            <div className="absolute top-4 right-4 h-fit bg-primary/20 backdrop-blur-md px-3 py-1 rounded-full text-[10px] font-bold text-primary uppercase tracking-wider border border-primary/20">
+                                                {post.tags?.[0] || 'Updates'}
                                             </div>
-                                        )}
-                                        <div className="absolute top-4 right-4 h-fit bg-primary/20 backdrop-blur-md px-3 py-1 rounded-full text-[10px] font-bold text-primary uppercase tracking-wider border border-primary/20">
-                                            {post.tags?.[0] || 'Updates'}
                                         </div>
-                                    </div>
-                                    <div className="p-6 flex-1 flex flex-col">
-                                        <div className="flex items-center gap-4 text-[10px] text-muted-foreground mb-4 uppercase tracking-widest font-bold">
-                                            <span className="flex items-center gap-1"><Calendar className="w-3 h-3" /> {new Date(post.createdAt!).toLocaleDateString()}</span>
-                                            <span className="flex items-center gap-1"><User className="w-3 h-3" /> {post.author}</span>
+                                        <div className="p-6 flex-1 flex flex-col">
+                                            <div className="flex items-center gap-4 text-[10px] text-muted-foreground mb-4 uppercase tracking-widest font-bold">
+                                                <span className="flex items-center gap-1"><Calendar className="w-3 h-3" /> {new Date(post.createdAt!).toLocaleDateString()}</span>
+                                                <span className="flex items-center gap-1"><User className="w-3 h-3" /> {post.author}</span>
+                                            </div>
+                                            <h2 className="text-xl font-bold mb-3 group-hover:text-primary transition-colors line-clamp-2">{post.title}</h2>
+                                            <p className="text-muted-foreground text-sm mb-6 leading-relaxed line-clamp-3">{post.excerpt}</p>
+                                            <div className="mt-auto flex items-center gap-2 text-primary font-bold text-sm">
+                                                Read More <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                                            </div>
                                         </div>
-                                        <h2 className="text-xl font-bold mb-3 group-hover:text-primary transition-colors line-clamp-2">{post.title}</h2>
-                                        <p className="text-muted-foreground text-sm mb-6 leading-relaxed line-clamp-3">{post.excerpt}</p>
-                                        <div className="mt-auto flex items-center gap-2 text-primary font-bold text-sm">
-                                            Read More <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-                                        </div>
-                                    </div>
-                                </motion.article>
+                                    </motion.article>
+                                </Link>
                             ))}
                         </div>
                     )}

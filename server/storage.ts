@@ -13,7 +13,7 @@ import {
 import { db } from "./lib/firebase.js"; // Using Firebase Admin Firestore
 
 // Helper to get Date from field safely
-const safeDate = (date: any): Date | null => {
+export const safeDate = (date: any): Date | null => {
   if (!date) return null;
   if (date instanceof Date) return date;
   if (typeof date.toDate === 'function') return date.toDate();
@@ -25,7 +25,7 @@ const safeDate = (date: any): Date | null => {
 };
 
 // Helper to convert Firestore timestamp to Date and handle missing fields
-const convertDates = (data: any): any => {
+export const convertDates = (data: any): any => {
   if (!data) return data;
   const result = { ...data };
 
@@ -62,6 +62,7 @@ export interface IStorage {
   updateUserStatus(userId: string, status: "active" | "blocked" | "restricted"): Promise<User>;
   deleteUser(userId: string): Promise<void>;
   getAllUsers(): Promise<User[]>;
+  getAllReferrals(): Promise<Referral[]>;
 
   // Blog
   getBlogPost(id: string): Promise<BlogPost | undefined>;
@@ -190,6 +191,11 @@ export class FirestoreStorage implements IStorage {
     });
   }
 
+  async getAllReferrals(): Promise<Referral[]> {
+    const snapshot = await db.collection('referrals').get();
+    return snapshot.docs.map(doc => convertDates({ id: doc.id, ...doc.data() }) as Referral);
+  }
+
   async updateUserStatus(userId: string, status: "active" | "blocked" | "restricted"): Promise<User> {
     const userRef = db.collection('users').doc(userId);
     await userRef.update({ status, updatedAt: new Date() });
@@ -287,12 +293,18 @@ export class FirestoreStorage implements IStorage {
   }
 
   async getReferrals(userId: string): Promise<(Referral & { referredUser: User | null })[]> {
+    // Fetch all referrals for this referrer to avoid complex index requirements
     const snapshot = await db.collection('referrals')
       .where('referrerId', '==', userId)
-      .orderBy('createdAt', 'desc')
       .get();
 
-    const referrals = snapshot.docs.map(doc => convertDates({ id: doc.id, ...doc.data() }) as Referral);
+    const referrals = snapshot.docs
+      .map(doc => convertDates({ id: doc.id, ...doc.data() }) as Referral)
+      .sort((a, b) => {
+        const dateA = new Date(a.createdAt || 0).getTime();
+        const dateB = new Date(b.createdAt || 0).getTime();
+        return dateB - dateA; // Newest first
+      });
 
     // Enrich with referred users
     const results = await Promise.all(referrals.map(async (ref) => {
@@ -301,6 +313,13 @@ export class FirestoreStorage implements IStorage {
     }));
 
     return results;
+  }
+
+  async getTotalReferralCount(userId: string): Promise<number> {
+    const snapshot = await db.collection('referrals')
+      .where('referrerId', '==', userId)
+      .get();
+    return snapshot.size;
   }
 
   async getReferralByUsers(referrerId: string, referredUserId: string): Promise<Referral | undefined> {
@@ -342,19 +361,22 @@ export class FirestoreStorage implements IStorage {
   async getActiveReferralCount(userId: string): Promise<number> {
     const snapshot = await db.collection('referrals')
       .where('referrerId', '==', userId)
-      .where('status', '==', 'active')
-      .count()
       .get();
-    return snapshot.data().count;
+    return snapshot.docs.filter(doc => doc.data().status === 'active').length;
   }
 
   async getPendingPayouts(): Promise<(Payout & { user: User | null })[]> {
-    const snapshot = await db.collection('payouts')
-      .where('status', 'in', ['pending', 'approved'])
-      .orderBy('createdAt', 'desc')
-      .get();
+    // Fetch all payouts and filter in-memory to avoid any Firestore index requirements
+    const snapshot = await db.collection('payouts').get();
 
-    const payouts = snapshot.docs.map(doc => convertDates({ id: doc.id, ...doc.data() }) as Payout);
+    const payouts = snapshot.docs
+      .map(doc => convertDates({ id: doc.id, ...doc.data() }) as Payout)
+      .filter(p => p.status === 'pending' || p.status === 'approved')
+      .sort((a, b) => {
+        const dateA = safeDate(a.createdAt)?.getTime() || 0;
+        const dateB = safeDate(b.createdAt)?.getTime() || 0;
+        return dateB - dateA;
+      });
 
     const results = await Promise.all(payouts.map(async (payout) => {
       const user = await this.getUser(payout.userId);
@@ -522,12 +544,33 @@ export class FirestoreStorage implements IStorage {
     const payouts = await db.collection('payouts').where('status', '==', 'completed').get();
 
     const revenueByDay: Record<string, number> = {};
+    const subStatuses: Record<string, number> = { active: 0, pending: 0, expired: 0, none: 0, free: 0 };
+
+    // Get all users to calculate 'none' (no subscription) status
+    const allUsers = await db.collection('users').get();
+    const userIdsWithSub = new Set();
+
     subs.forEach(doc => {
       const data = doc.data();
+      userIdsWithSub.add(data.userId);
       const d = safeDate(data.createdAt);
-      if (data.status === 'active' && d) {
+
+      const statusKey = (data.status || '').toLowerCase();
+
+      if (statusKey === 'active' && d) {
         const date = d.toISOString().split('T')[0];
         revenueByDay[date] = (revenueByDay[date] || 0) + (data.amount || 500);
+      }
+
+      if (subStatuses[statusKey] !== undefined) {
+        subStatuses[statusKey]++;
+      }
+    });
+
+    // Count users without any subscription record
+    allUsers.forEach(doc => {
+      if (!userIdsWithSub.has(doc.id)) {
+        subStatuses.none++;
       }
     });
 
@@ -545,10 +588,11 @@ export class FirestoreStorage implements IStorage {
       revenueByDay: Object.entries(revenueByDay).map(([date, amount]) => ({ date, amount })).sort((a, b) => a.date.localeCompare(b.date)),
       payoutByDay: Object.entries(payoutByDay).map(([date, amount]) => ({ date, amount })).sort((a, b) => a.date.localeCompare(b.date)),
       subscriptionBreakdown: [
-        { name: 'Active', value: subs.docs.filter(d => d.data().status === 'active').length },
-        { name: 'Pending', value: subs.docs.filter(d => d.data().status === 'pending').length },
-        { name: 'Expired', value: subs.docs.filter(d => d.data().status === 'expired').length },
-      ]
+        { name: 'Active', value: subStatuses.active },
+        { name: 'Pending', value: subStatuses.pending + subStatuses.none },
+        { name: 'Expired', value: subStatuses.expired },
+        { name: 'Free', value: subStatuses.free },
+      ].filter(s => s.value > 0 || s.name === 'Active') // Always show Active even if 0
     };
   }
 
