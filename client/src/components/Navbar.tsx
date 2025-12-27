@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
-import { Menu, X, Zap } from "lucide-react";
+import { Menu, X, Zap, Settings } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { cn } from "@/lib/utils";
 import { ADMIN_PATH } from "@shared/constants";
@@ -25,6 +25,9 @@ export function Navbar({ onLogin, onLogout }: NavbarProps) {
       { href: "/", label: "Home" },
       { href: "/tracker", label: "Tracker" },
       { href: "/dashboard", label: "Dashboard" },
+      { href: "/wallet", label: "Wallet" },
+      { href: "/goals", label: "Goals" },
+      { href: "/leaderboard", label: "Leaderboard" },
       { href: "/network", label: "Network" },
       { href: "/about", label: "About" },
       { href: "/faq", label: "FAQ" },
@@ -78,6 +81,11 @@ export function Navbar({ onLogin, onLogout }: NavbarProps) {
             {isAuthenticated ? (
               <>
                 <NotificationDropdown />
+                <Link href="/settings">
+                  <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground">
+                    <Settings className="w-5 h-5" />
+                  </Button>
+                </Link>
                 <Button variant="outline" onClick={onLogout} data-testid="button-logout">
                   Logout
                 </Button>
@@ -121,17 +129,28 @@ export function Navbar({ onLogin, onLogout }: NavbarProps) {
                 </div>
                 <div className="mt-auto pb-8 flex flex-col gap-3">
                   {isAuthenticated ? (
-                    <Button
-                      variant="outline"
-                      className="w-full"
-                      onClick={() => {
-                        onLogout?.();
-                        setIsOpen(false);
-                      }}
-                      data-testid="button-mobile-logout"
-                    >
-                      Logout
-                    </Button>
+                    <>
+                      <Link href="/settings" onClick={() => setIsOpen(false)}>
+                        <Button
+                          variant="ghost"
+                          className="w-full justify-start px-4"
+                        >
+                          <Settings className="w-4 h-4 mr-2" />
+                          Settings
+                        </Button>
+                      </Link>
+                      <Button
+                        variant="outline"
+                        className="w-full"
+                        onClick={() => {
+                          onLogout?.();
+                          setIsOpen(false);
+                        }}
+                        data-testid="button-mobile-logout"
+                      >
+                        Logout
+                      </Button>
+                    </>
                   ) : (
                     <>
                       <Button

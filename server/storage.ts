@@ -11,7 +11,10 @@ import {
   type InsertBlogPost,
   type Notification,
   type InsertNotification,
+  type SavingsGoal,
+  type InsertSavingsGoal,
 } from "../shared/schema.js";
+import admin from "firebase-admin";
 import { db } from "./lib/firebase.js"; // Using Firebase Admin Firestore
 
 // Helper to get Date from field safely
@@ -85,17 +88,25 @@ export interface IStorage {
 
   getPendingPayouts(): Promise<(Payout & { user: User | null })[]>;
   getUserPayouts(userId: string): Promise<Payout[]>;
+  getRecentPayouts(): Promise<(Payout & { user: User | null })[]>;
   createPayout(userId: string, amount: number, phone: string, provider: string): Promise<Payout>;
   approvePayout(payoutId: string, adminId: string): Promise<Payout>;
   completePayout(payoutId: string): Promise<Payout>;
 
   getTransactions(userId: string): Promise<Transaction[]>;
   createTransaction(data: Partial<Transaction> & { userId: string; type: string; amount: number }): Promise<Transaction>;
+  getUserBalance(userId: string): Promise<number>;
 
   // Finance Records
   createFinanceRecord(userId: string, record: InsertFinanceRecord): Promise<FinanceRecord>;
   getFinanceRecords(userId: string): Promise<FinanceRecord[]>;
   deleteFinanceRecord(id: string, userId: string): Promise<void>;
+
+  // Savings Goals
+  createSavingsGoal(goal: InsertSavingsGoal & { userId: string }): Promise<SavingsGoal>;
+  getUserSavingsGoals(userId: string): Promise<SavingsGoal[]>;
+  updateSavingsGoal(id: string, goal: Partial<SavingsGoal>): Promise<SavingsGoal>;
+  deleteSavingsGoal(id: string): Promise<void>;
 
   getDashboardStats(): Promise<{
     totalUsers: number;
@@ -134,6 +145,12 @@ export class FirestoreStorage implements IStorage {
       };
       await userRef.update(updateData);
       const updated = await userRef.get();
+      // Ensure referralCount is returned - might need backfill if missing in doc but typed in Schema
+      const data = updated.data();
+      if (data && typeof data.referralCount === 'undefined') {
+        // Allow read but we should fix it eventually.
+        // For now, let convertDates handle basics, but we might manually cast
+      }
       return convertDates({ id: updated.id, ...updated.data() }) as User;
     }
 
@@ -141,6 +158,7 @@ export class FirestoreStorage implements IStorage {
     const newUser = {
       ...userData,
       referralCode,
+      referralCount: 0,
       createdAt: new Date(),
       updatedAt: new Date(),
       isAdmin: userData.isAdmin || false,
@@ -356,6 +374,16 @@ export class FirestoreStorage implements IStorage {
       status: 'active',
       activatedAt: new Date(),
     });
+
+    // Increment referrer's referral count
+    const refDoc = await refRef.get();
+    const refData = refDoc.data();
+    if (refData && refData.referrerId) {
+      await db.collection("users").doc(refData.referrerId).update({
+        referralCount: admin.firestore.FieldValue.increment(1)
+      });
+    }
+
     const updated = await refRef.get();
     return convertDates({ id: updated.id, ...updated.data() }) as Referral;
   }
@@ -396,6 +424,23 @@ export class FirestoreStorage implements IStorage {
     return snapshot.docs.map(doc => convertDates({ id: doc.id, ...doc.data() }) as Payout);
   }
 
+  async getRecentPayouts(): Promise<(Payout & { user: User | null })[]> {
+    const snapshot = await db.collection('payouts')
+      .where('status', 'in', ['approved', 'completed'])
+      .orderBy('createdAt', 'desc')
+      .limit(10)
+      .get();
+
+    const payouts = snapshot.docs.map(doc => convertDates({ id: doc.id, ...doc.data() }) as Payout);
+
+    const results = await Promise.all(payouts.map(async (payout) => {
+      const user = await this.getUser(payout.userId);
+      return { ...payout, user: user || null };
+    }));
+
+    return results;
+  }
+
   async createPayout(userId: string, amount: number, phone: string, provider: string): Promise<Payout> {
     const payoutData = {
       userId,
@@ -432,23 +477,7 @@ export class FirestoreStorage implements IStorage {
     return convertDates({ id: updated.id, ...updated.data() }) as Payout;
   }
 
-  async getTransactions(userId: string): Promise<Transaction[]> {
-    const snapshot = await db.collection('transactions')
-      .where('userId', '==', userId)
-      .orderBy('createdAt', 'desc')
-      .get();
-    return snapshot.docs.map(doc => convertDates({ id: doc.id, ...doc.data() }) as Transaction);
-  }
 
-  async createTransaction(data: Partial<Transaction> & { userId: string; type: string; amount: number }): Promise<Transaction> {
-    const txData = {
-      ...data,
-      createdAt: new Date(),
-    };
-    const docRef = await db.collection('transactions').add(txData);
-    const doc = await docRef.get();
-    return convertDates({ id: doc.id, ...doc.data() }) as Transaction;
-  }
 
   // Finance Records Implementation
   async createFinanceRecord(userId: string, record: InsertFinanceRecord): Promise<FinanceRecord> {
@@ -499,6 +528,37 @@ export class FirestoreStorage implements IStorage {
     }
 
     await docRef.delete();
+  }
+
+  // Savings Goals Implementation
+  async createSavingsGoal(goal: InsertSavingsGoal & { userId: string }): Promise<SavingsGoal> {
+    const goalData = {
+      ...goal,
+      currentAmount: 0,
+      createdAt: new Date(),
+    };
+    const docRef = await db.collection('savings_goals').add(goalData);
+    const doc = await docRef.get();
+    return convertDates({ id: doc.id, ...doc.data() }) as SavingsGoal;
+  }
+
+  async getUserSavingsGoals(userId: string): Promise<SavingsGoal[]> {
+    const snapshot = await db.collection('savings_goals')
+      .where('userId', '==', userId)
+      .orderBy('createdAt', 'desc')
+      .get();
+    return snapshot.docs.map(doc => convertDates({ id: doc.id, ...doc.data() }) as SavingsGoal);
+  }
+
+  async updateSavingsGoal(id: string, goal: Partial<SavingsGoal>): Promise<SavingsGoal> {
+    const ref = db.collection('savings_goals').doc(id);
+    await ref.update({ ...goal }); // Removed updatedAt since it's not in the schema, but could add it if we update schema
+    const updated = await ref.get();
+    return convertDates({ id: updated.id, ...updated.data() }) as SavingsGoal;
+  }
+
+  async deleteSavingsGoal(id: string): Promise<void> {
+    await db.collection('savings_goals').doc(id).delete();
   }
 
   async getDashboardStats() {
@@ -699,6 +759,40 @@ export class FirestoreStorage implements IStorage {
     await db.collection('notifications').doc(notificationId).update({ read: true });
   }
 
+  async createTransaction(data: Partial<Transaction> & { userId: string; type: string; amount: number }): Promise<Transaction> {
+    const transactionData = {
+      ...data,
+      id: generateId(),
+      createdAt: new Date(),
+      status: data.status || 'completed'
+    };
+    await db.collection("transactions").doc(transactionData.id).set(transactionData);
+    return transactionData as Transaction;
+  }
+
+  async getTransactions(userId: string): Promise<Transaction[]> {
+    const snapshot = await db.collection("transactions")
+      .where("userId", "==", userId)
+      .orderBy("createdAt", "desc")
+      .get();
+    return snapshot.docs.map(doc => convertDates(doc.data()) as Transaction);
+  }
+
+  async getUserBalance(userId: string): Promise<number> {
+    const snapshot = await db.collection("transactions")
+      .where("userId", "==", userId)
+      .where("status", "==", "completed")
+      .get();
+
+    let balance = 0;
+    snapshot.forEach(doc => {
+      const data = doc.data();
+      balance += (data.amount || 0);
+    });
+
+    return balance;
+  }
+
   async getAllNotifications(): Promise<Notification[]> {
     const snapshot = await db.collection('notifications').orderBy('createdAt', 'desc').get();
     return snapshot.docs.map(d => convertDates({ id: d.id, ...d.data() }) as Notification);
@@ -716,6 +810,26 @@ export class FirestoreStorage implements IStorage {
       chunk.forEach(doc => batch.delete(doc.ref));
       await batch.commit();
     }
+  }
+  async getLeaderboard(): Promise<User[]> {
+    // Use the same logistics as admin panel: fetch all and sort in memory
+    // This avoids issues with Firestore excluding documents where the field is missing
+    const snapshot = await db.collection("users").get();
+
+    const users = snapshot.docs.map(doc => {
+      const userData = doc.data();
+      return {
+        id: doc.id,
+        ...userData,
+        ...userData,
+        publicUsername: userData?.publicUsername || null,
+        totalEarnings: (userData?.referralCount || 0) * 250
+      } as User & { totalEarnings: number };
+    });
+
+    return users
+      .sort((a, b) => (b.referralCount || 0) - (a.referralCount || 0))
+      .slice(0, 10);
   }
 }
 

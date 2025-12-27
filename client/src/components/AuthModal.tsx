@@ -11,7 +11,7 @@ import {
   DialogClose,
 } from "@/components/ui/dialog";
 import { motion, AnimatePresence } from "framer-motion";
-import { Zap, Mail, Lock, User, Phone, ArrowRight } from "lucide-react";
+import { Zap, Mail, Lock, User, Phone, ArrowRight, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 interface AuthModalProps {
@@ -140,6 +140,11 @@ export function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps) {
           <div className="absolute -bottom-20 -left-20 w-40 h-40 bg-accent/20 rounded-full blur-3xl" />
         </div>
 
+        <DialogClose className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground z-50">
+          <X className="h-4 w-4" />
+          <span className="sr-only">Close</span>
+        </DialogClose>
+
         <DialogHeader className="p-6 pb-0 relative z-10">
           <div className="flex items-center gap-3 mb-2">
             <div className="p-2 rounded-lg gradient-neon">
@@ -262,20 +267,37 @@ export function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps) {
                   initial={{ opacity: 0, height: 0 }}
                   animate={{ opacity: 1, height: "auto" }}
                   exit={{ opacity: 0, height: 0 }}
-                  className="space-y-2"
+                  className="space-y-4"
                 >
-                  <Label htmlFor="referralCode">Referral Code <span className="text-red-500">*</span></Label>
-                  <Input
-                    id="referralCode"
-                    placeholder="Enter referral code"
-                    value={formData.referralCode}
-                    onChange={(e) =>
-                      handleInputChange("referralCode", e.target.value.toUpperCase())
-                    }
-                    className="glass-strong"
-                    required
-                    data-testid="input-referral-code"
-                  />
+                  <div className="space-y-2">
+                    <Label htmlFor="referralCode">Referral Code <span className="text-red-500">*</span></Label>
+                    <Input
+                      id="referralCode"
+                      placeholder="Enter referral code"
+                      value={formData.referralCode}
+                      onChange={(e) =>
+                        handleInputChange("referralCode", e.target.value.toUpperCase())
+                      }
+                      className="glass-strong"
+                      required
+                      data-testid="input-referral-code"
+                    />
+                  </div>
+
+                  <div className="flex items-center space-x-2">
+                    <input
+                      type="checkbox"
+                      id="terms"
+                      required
+                      className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary bg-transparent"
+                    />
+                    <label
+                      htmlFor="terms"
+                      className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 text-muted-foreground"
+                    >
+                      I agree to the <a href="/terms" target="_blank" className="text-primary hover:underline">Terms of Service</a>
+                    </label>
+                  </div>
                 </motion.div>
               )}
             </AnimatePresence>

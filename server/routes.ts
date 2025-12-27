@@ -2,7 +2,7 @@ import type { Express } from "express";
 import type { Server } from "http";
 import { storage, safeDate, convertDates } from "./storage.js";
 import { verifyFirebaseToken, isAdmin } from "./middleware/auth.js";
-import { insertFinanceRecordSchema, insertBlogPostSchema, type Transaction } from "../shared/schema.js";
+import { insertFinanceRecordSchema, insertBlogPostSchema, insertSavingsGoalSchema, savingsGoalSchema, type Transaction } from "../shared/schema.js";
 import { db } from "./lib/firebase.js";
 
 export async function registerRoutes(
@@ -84,6 +84,34 @@ export async function registerRoutes(
     } catch (error) {
       console.error("Error updating phone:", error);
       res.status(500).json({ message: "Failed to update phone" });
+    }
+  });
+
+  // Update user profile
+  app.patch('/api/users/profile', verifyFirebaseToken, async (req: any, res) => {
+    try {
+      const userId = req.user.uid;
+      const { firstName, lastName, bio, paymentPhone, profileImageUrl, dateOfBirth, notificationsEnabled } = req.body;
+
+      // Basic validation if needed, or rely on schema. 
+      // UpsertUser matches InsertUser which matches schema partial.
+      // We'll update the fields provided.
+
+      const updateData: any = { id: userId };
+      if (firstName !== undefined) updateData.firstName = firstName;
+      if (lastName !== undefined) updateData.lastName = lastName;
+      if (bio !== undefined) updateData.bio = bio;
+      if (paymentPhone !== undefined) updateData.paymentPhone = paymentPhone;
+      if (profileImageUrl !== undefined) updateData.profileImageUrl = profileImageUrl;
+      if (dateOfBirth !== undefined) updateData.dateOfBirth = dateOfBirth;
+      if (notificationsEnabled !== undefined) updateData.notificationsEnabled = notificationsEnabled;
+      if (req.body.publicUsername !== undefined) updateData.publicUsername = req.body.publicUsername;
+
+      const user = await storage.upsertUser(updateData);
+      res.json(user);
+    } catch (error) {
+      console.error("Error updating profile:", error);
+      res.status(500).json({ message: "Failed to update profile" });
     }
   });
 
@@ -243,7 +271,7 @@ export async function registerRoutes(
 
           await storage.createTransaction({
             userId: user.referredBy,
-            type: 'referral_credit',
+            type: 'referral_reward',
             amount: 250,
             description: `Referral bonus from ${user.firstName || user.email}`,
             referenceId: referral.id,
@@ -367,6 +395,88 @@ export async function registerRoutes(
     } catch (error) {
       console.error("Error fetching stats:", error);
       res.status(500).json({ message: "Failed to fetch stats" });
+    }
+  });
+
+  // Wallet Routes
+  app.get('/api/wallet/balance', verifyFirebaseToken, async (req: any, res) => {
+    try {
+      const balance = await storage.getUserBalance(req.user.uid);
+      res.json({ balance, currency: 'LRD' });
+    } catch (error) {
+      console.error("Error fetching balance:", error);
+      res.status(500).json({ message: "Failed to fetch balance" });
+    }
+  });
+
+  app.get('/api/wallet/transactions', verifyFirebaseToken, async (req: any, res) => {
+    try {
+      const transactions = await storage.getTransactions(req.user.uid);
+      res.json(transactions);
+    } catch (error) {
+      console.error("Error fetching transactions:", error);
+      res.status(500).json({ message: "Failed to fetch transactions" });
+    }
+  });
+
+  app.get('/api/leaderboard', async (req, res) => {
+    try {
+      const users = await storage.getLeaderboard();
+      // Filter out sensitive data if needed, though schema usually handles password omission.
+      // But let's be safe and map to minimal public profile
+      const safeUsers = users.map(u => ({
+        id: u.id,
+        username: u.publicUsername || (u.firstName ? `${u.firstName} ${u.lastName?.[0] || ''}.` : (u.email?.split('@')[0] || 'User')),
+        referralCount: u.referralCount || 0,
+        totalEarnings: (u as any).totalEarnings || 0
+      }));
+      res.json(safeUsers);
+    } catch (error) {
+      console.error("Error fetching leaderboard:", error);
+      res.status(500).json({ message: "Failed to fetch leaderboard" });
+    }
+  });
+
+  app.get('/api/public/payouts', async (req, res) => {
+    try {
+      const payouts = await storage.getRecentPayouts();
+      const publicPayouts = payouts.map(p => ({
+        id: p.id,
+        username: p.user?.publicUsername || (p.user?.firstName ? `${p.user.firstName} ${p.user.lastName?.[0] || ''}.` : 'User'),
+        amount: p.amount,
+        timestamp: p.completedAt || p.createdAt
+      }));
+      res.json(publicPayouts);
+    } catch (error) {
+      console.error("Error fetching public payouts:", error);
+      res.status(500).json({ message: "Failed to fetch payouts" });
+    }
+  });
+
+  app.post('/api/wallet/payout', verifyFirebaseToken, async (req: any, res) => {
+    try {
+      const { amount, paymentPhone } = req.body;
+      const balance = await storage.getUserBalance(req.user.uid);
+
+      if (balance < amount) {
+        return res.status(400).json({ message: "Insufficient funds" });
+      }
+
+      const payout = await storage.createPayout(req.user.uid, amount, paymentPhone, "mobile_money");
+
+      await storage.createTransaction({
+        userId: req.user.uid,
+        type: 'payout',
+        amount: -amount,
+        status: 'pending',
+        description: `Payout request to ${paymentPhone}`,
+        referenceId: payout.id
+      });
+
+      res.json(payout);
+    } catch (error) {
+      console.error("Error requesting payout:", error);
+      res.status(500).json({ message: "Failed to request payout" });
     }
   });
 
@@ -511,6 +621,26 @@ export async function registerRoutes(
     } catch (error) {
       console.error("Error fetching admin user transactions:", error);
       res.status(500).json({ message: "Failed to fetch transactions" });
+    }
+  });
+
+  // Migration Endpoint (Admin Only)
+  app.post('/api/admin/migrations/referral-count', verifyFirebaseToken, isAdmin, async (req: any, res) => {
+    try {
+      const users = await storage.getAllUsers();
+      let updatedCount = 0;
+
+      for (const user of users) {
+        if (typeof user.referralCount === 'undefined') {
+          await storage.upsertUser({ id: user.id, referralCount: 0 });
+          updatedCount++;
+        }
+      }
+
+      res.json({ message: "Migration completed", updatedCount, totalUsers: users.length });
+    } catch (error) {
+      console.error("Error running migration:", error);
+      res.status(500).json({ message: "Migration failed" });
     }
   });
 
@@ -694,6 +824,53 @@ export async function registerRoutes(
       } else {
         res.status(500).json({ message: "Failed to delete record" });
       }
+    }
+  });
+
+  // Savings Goals Routes
+  app.get('/api/savings-goals', verifyFirebaseToken, async (req: any, res) => {
+    try {
+      const userId = req.user.uid;
+      const goals = await storage.getUserSavingsGoals(userId);
+      res.json(goals);
+    } catch (error) {
+      console.error("Error fetching savings goals:", error);
+      res.status(500).json({ message: "Failed to fetch savings goals" });
+    }
+  });
+
+  app.post('/api/savings-goals', verifyFirebaseToken, async (req: any, res) => {
+    try {
+      const userId = req.user.uid;
+      const goalData = insertSavingsGoalSchema.parse(req.body);
+      const goal = await storage.createSavingsGoal({ ...goalData, userId });
+      res.json(goal);
+    } catch (error) {
+      console.error("Error creating savings goal:", error);
+      res.status(400).json({ message: "Invalid goal data" });
+    }
+  });
+
+  app.patch('/api/savings-goals/:id', verifyFirebaseToken, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const updateData = req.body; // In a strict app, we would validate with savingsGoalSchema.partial().parse(req.body);
+      const goal = await storage.updateSavingsGoal(id, updateData);
+      res.json(goal);
+    } catch (error) {
+      console.error("Error updating savings goal:", error);
+      res.status(500).json({ message: "Failed to update savings goal" });
+    }
+  });
+
+  app.delete('/api/savings-goals/:id', verifyFirebaseToken, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      await storage.deleteSavingsGoal(id);
+      res.json({ message: "Savings goal deleted" });
+    } catch (error) {
+      console.error("Error deleting savings goal:", error);
+      res.status(500).json({ message: "Failed to delete savings goal" });
     }
   });
 

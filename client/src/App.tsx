@@ -7,6 +7,10 @@ import { Landing } from "@/pages/Landing";
 import { NetworkPage } from "@/pages/NetworkPage";
 import TrackerPage from "@/pages/TrackerPage";
 import { Dashboard } from "@/pages/Dashboard";
+import SavingsGoals from "@/pages/SavingsGoals";
+import Settings from "@/pages/Settings";
+import Wallet from "@/pages/Wallet";
+import Leaderboard from "@/pages/Leaderboard";
 import { Admin } from "@/pages/Admin";
 import { About } from "@/pages/About";
 import FAQ from "@/pages/FAQ";
@@ -57,6 +61,46 @@ function Router() {
             <div>Loading...</div>
           ) : isAuthenticated ? (
             <Dashboard />
+          ) : (
+            <Landing />
+          )}
+        </Route>
+
+        <Route path="/goals">
+          {isLoading ? (
+            <div>Loading...</div>
+          ) : isAuthenticated ? (
+            <SavingsGoals />
+          ) : (
+            <Landing />
+          )}
+        </Route>
+
+        <Route path="/leaderboard">
+          {isLoading ? (
+            <div>Loading...</div>
+          ) : isAuthenticated ? (
+            <Leaderboard />
+          ) : (
+            <Landing />
+          )}
+        </Route>
+
+        <Route path="/settings">
+          {isLoading ? (
+            <div>Loading...</div>
+          ) : isAuthenticated ? (
+            <Settings />
+          ) : (
+            <Landing />
+          )}
+        </Route>
+
+        <Route path="/wallet">
+          {isLoading ? (
+            <div>Loading...</div>
+          ) : isAuthenticated ? (
+            <Wallet />
           ) : (
             <Landing />
           )}

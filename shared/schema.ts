@@ -10,7 +10,15 @@ export const userSchema = z.object({
   referralCode: z.string(),
   referredBy: z.string().nullable().optional(),
   isAdmin: z.boolean().default(false),
+  referralCount: z.number().default(0),
+  publicUsername: z.string().nullable().optional(),
   status: z.enum(["active", "blocked", "restricted"]).default("active"),
+  bio: z.string().nullable().optional(),
+  paymentPhone: z.string().nullable().optional(),
+  dateOfBirth: z.string().nullable().optional(),
+  termsAccepted: z.boolean().default(false),
+  notificationsEnabled: z.boolean().default(true),
+  twoFactorEnabled: z.boolean().default(false),
   createdAt: z.date().or(z.string()).nullable().optional(),
   updatedAt: z.date().or(z.string()).nullable().optional(),
 });
@@ -54,8 +62,9 @@ export const payoutSchema = z.object({
 export const transactionSchema = z.object({
   id: z.string(),
   userId: z.string(),
-  type: z.string(),
+  type: z.enum(['referral_reward', 'subscription_payment', 'payout', 'adjustment']),
   amount: z.number(),
+  status: z.enum(['completed', 'pending', 'failed']).default('completed'),
   description: z.string().nullable().optional(),
   referenceId: z.string().nullable().optional(),
   createdAt: z.date().or(z.string()).nullable().optional(),
@@ -155,3 +164,26 @@ export const insertNotificationSchema = notificationSchema.omit({
 
 export type Notification = z.infer<typeof notificationSchema>;
 export type InsertNotification = z.infer<typeof insertNotificationSchema>;
+
+// Savings Goal Schema
+export const savingsGoalSchema = z.object({
+  id: z.string(),
+  userId: z.string(),
+  title: z.string().min(1, "Title is required"),
+  targetAmount: z.number().min(1, "Target must be at least 1"),
+  currentAmount: z.number().default(0),
+  currency: z.enum(["LRD", "USD"]).default("LRD"),
+  deadline: z.date().or(z.string()).nullable().optional(),
+  category: z.string().default("General"),
+  createdAt: z.date().or(z.string()).default(() => new Date().toISOString()),
+});
+
+export const insertSavingsGoalSchema = savingsGoalSchema.omit({
+  id: true,
+  userId: true,
+  currentAmount: true,
+  createdAt: true,
+});
+
+export type SavingsGoal = z.infer<typeof savingsGoalSchema>;
+export type InsertSavingsGoal = z.infer<typeof insertSavingsGoalSchema>;

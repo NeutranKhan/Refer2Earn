@@ -9,6 +9,7 @@ import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { ArrowRight, PieChart, DollarSign, Wallet, TrendingUp, TrendingDown } from "lucide-react";
 import { motion } from "framer-motion";
+import { PayoutNotification } from "@/components/PayoutNotification";
 
 export function Landing() {
   const { isAuthenticated } = useAuth();
@@ -273,6 +274,7 @@ export function Landing() {
         onClose={() => setShowAuthModal(false)}
         onSuccess={() => setLocation("/tracker")}
       />
+      <PayoutNotification />
     </div>
   );
 }
